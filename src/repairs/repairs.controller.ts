@@ -61,7 +61,19 @@ export class RepairsController {
       dto.reporterDepartment = body.reporterDepartment;
       dto.reporterPhone = body.reporterPhone;
       dto.location = body.location || 'ไม่ได้ระบุ';
-      dto.problemTitle = body.problemTitle || 'ไม่มีหัวข้อ';
+
+      // Smart Title Handling:
+      // Since the frontend now sends the full description as the title,
+      // we check if they are identical. If so, and it's long, we truncate the title
+      // to keep the dashboard clean.
+      const rawTitle = body.problemTitle || body.problemDescription || 'ไม่มีหัวข้อ';
+      const rawDescription = body.problemDescription || body.problemTitle || '';
+
+      if (rawTitle === rawDescription && rawTitle.length > 100) {
+        dto.problemTitle = rawTitle.substring(0, 100) + '...';
+      } else {
+        dto.problemTitle = rawTitle;
+      }
 
       dto.reporterLineId =
         body.reporterLineId && body.reporterLineId !== 'null'
