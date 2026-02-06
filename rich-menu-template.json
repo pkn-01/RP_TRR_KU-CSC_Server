@@ -1,0 +1,62 @@
+{
+  "size": {
+    "width": 2500,
+    "height": 1686
+  },
+  "selected": true,
+  "name": "IT Support Menu",
+  "areas": [
+    {
+      "bounds": {
+        "x": 0,
+        "y": 0,
+        "width": 1250,
+        "height": 843
+      },
+      "action": {
+        "type": "uri",
+        "label": "🔧 แจ้งซ่อม",
+        "uri": "https://rp-trr-client-twxn.vercel.app/repairs/liff?action=create"
+      }
+    },
+    {
+      "bounds": {
+        "x": 1250,
+        "y": 0,
+        "width": 1250,
+        "height": 843
+      },
+      "action": {
+        "type": "uri",
+        "label": "📋 ตรวจสอบสถานะ",
+        "uri": "https://rp-trr-client-twxn.vercel.app/repairs/liff?action=status"
+      }
+    },
+    {
+      "bounds": {
+        "x": 0,
+        "y": 843,
+        "width": 1250,
+        "height": 843
+      },
+      "action": {
+        "type": "uri",
+        "label": "❓ คำถามที่พบบ่อย",
+        "uri": "https://rp-trr-client-twxn.vercel.app/repairs/liff?action=faq"
+      }
+    },
+    {
+      "bounds": {
+        "x": 1250,
+        "y": 843,
+        "width": 1250,
+        "height": 843
+      },
+      "action": {
+        "type": "uri",
+        "label": "📞 ติดต่อเรา",
+        "uri": "https://rp-trr-client-twxn.vercel.app/repairs/liff?action=contact"
+      }
+    }
+  ]
+}

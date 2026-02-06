@@ -1,0 +1,12 @@
+.env.local
+.env._.local
+.git
+.gitignore
+README.md
+_.md
+node_modules
+.next
+.eslintrc
+jest.config.js
+test/
+tsconfig.spec.json
