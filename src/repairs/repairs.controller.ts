@@ -154,6 +154,24 @@ export class RepairsController {
   }
 
   /* =====================================================
+      LIFF : Public Ticket Tracking (No Login Required)
+  ===================================================== */
+
+  @SetMetadata('isPublic', true)
+  @Get('liff/ticket-public/:code')
+  async getTicketPublic(@Param('code') code: string) {
+    try {
+      const ticket = await this.repairsService.findByCode(code);
+      return ticket;
+    } catch (error) {
+      throw new HttpException(
+        'Ticket not found',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+  }
+
+  /* =====================================================
       Protected APIs
   ===================================================== */
 
