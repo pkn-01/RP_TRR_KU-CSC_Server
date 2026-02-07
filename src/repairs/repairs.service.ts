@@ -381,18 +381,9 @@ export class RepairsService {
             include: { attachments: { take: 1 } },
           });
           
-          // Notify via userId (for logged in users)
-          await this.lineNotificationService.notifyRepairTicketStatusUpdate(ticket.userId, {
-            ticketCode: ticket.ticketCode,
-            problemTitle: ticket.problemTitle,
-            status: dto.status,
-            remark: remarkMessage,
-            technicianNames,
-            updatedAt: new Date(),
-          });
-
-          // Also notify directly via reporterLineUserId (for guest users who linked via LINE OA)
+          // Consolidated Notification Logic: Send only ONE notification to reporter
           if (ticketWithAttachments?.reporterLineUserId) {
+            // Priority 1: Direct notification via reporterLineUserId (Special Flex template)
             const imageUrl = ticketWithAttachments.attachments?.[0]?.fileUrl;
             await this.lineNotificationService.notifyReporterDirectly(
               ticketWithAttachments.reporterLineUserId,
@@ -408,6 +399,17 @@ export class RepairsService {
               }
             );
             this.logger.log(`Notified reporter directly for: ${ticket.ticketCode}`);
+          } else {
+            // Priority 2: Standard notification via user ID (Fallback if no direct ID)
+            await this.lineNotificationService.notifyRepairTicketStatusUpdate(ticket.userId, {
+              ticketCode: ticket.ticketCode,
+              problemTitle: ticket.problemTitle,
+              status: dto.status,
+              remark: remarkMessage,
+              technicianNames,
+              updatedAt: new Date(),
+            });
+            this.logger.log(`Notified reporter via userId for: ${ticket.ticketCode}`);
           }
           
           this.logger.log(`Notified reporter for status change: ${ticket.ticketCode} -> ${dto.status}`);
