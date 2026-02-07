@@ -251,8 +251,11 @@ export class LineOAWebhookService {
    * Handle "Create Repair" postback - เปิด LIFF form
    */
   private async handleCreateRepairPostback(lineUserId: string, client: line.Client) {
-    // Redirect directly to form page with lineUserId for automatic notification linking
-    const liffUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/repairs/liff/form?lineUserId=${lineUserId}`;
+    // Use proper LIFF URL format - LIFF page will get userId from liff.getProfile()
+    // action=create tells the LIFF page to redirect to the form
+    const liffUrl = `https://liff.line.me/${this.liffId}?action=create`;
+
+    this.logger.log(`Opening LIFF form for user: ${lineUserId}, URL: ${liffUrl}`);
 
     const message: line.Message = {
       type: 'template',
