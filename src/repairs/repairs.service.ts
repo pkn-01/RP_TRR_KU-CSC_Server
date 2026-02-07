@@ -394,10 +394,65 @@ export class RepairsService {
   }
 
   async remove(id: number) {
-    return this.prisma.repairTicket.update({
-        where: { id },
-        data: { status: RepairTicketStatus.CANCELLED, cancelledAt: new Date() }
+    // Get ticket data first for notification
+    const ticket = await this.prisma.repairTicket.findUnique({
+      where: { id },
+      include: { 
+        attachments: { take: 1 },
+        assignees: { include: { user: true } },
+      },
     });
+
+    if (!ticket) {
+      throw new NotFoundException(`Repair ticket #${id} not found`);
+    }
+
+    // Update to cancelled status
+    const updatedTicket = await this.prisma.repairTicket.update({
+      where: { id },
+      data: { status: RepairTicketStatus.CANCELLED, cancelledAt: new Date() }
+    });
+
+    // Send LINE notification to reporter
+    try {
+      const technicianNames = ticket.assignees?.map(a => a.user.name) || [];
+
+      // Notify via userId (for logged in users)
+      await this.lineNotificationService.notifyRepairTicketStatusUpdate(ticket.userId, {
+        ticketCode: ticket.ticketCode,
+        problemTitle: ticket.problemTitle,
+        status: 'CANCELLED',
+        remark: 'รายการแจ้งซ่อมถูกยกเลิก',
+        technicianNames,
+        updatedAt: new Date(),
+      });
+
+      // Notify directly via reporterLineUserId (for users who came from LINE OA)
+      if (ticket.reporterLineUserId) {
+        const imageUrl = ticket.attachments?.[0]?.fileUrl;
+        await this.lineNotificationService.notifyReporterDirectly(
+          ticket.reporterLineUserId,
+          {
+            ticketCode: ticket.ticketCode,
+            status: 'CANCELLED',
+            urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',
+            problemTitle: ticket.problemTitle,
+            description: ticket.problemDescription || ticket.problemTitle,
+            imageUrl,
+            createdAt: ticket.createdAt,
+            remark: 'รายการแจ้งซ่อมถูกยกเลิก',
+          }
+        );
+        this.logger.log(`Notified reporter directly for cancellation: ${ticket.ticketCode}`);
+      }
+
+      this.logger.log(`Sent cancel notification for ticket: ${ticket.ticketCode}`);
+    } catch (notifError) {
+      // Don't fail the cancellation if notification fails
+      this.logger.error('Failed to send cancel notification:', notifError);
+    }
+
+    return updatedTicket;
   }
 
   async getStatistics() {
