@@ -144,10 +144,44 @@ export class RepairsService {
         urgency: dto.urgency || 'NORMAL',
         createdAt: new Date().toISOString(),
       });
-      this.logger.log(`LINE notification sent for new ticket: ${ticket.ticketCode}`);
+      this.logger.log(`LINE notification sent for new ticket to IT Team: ${ticket.ticketCode}`);
     } catch (error) {
       // Don't fail the ticket creation if notification fails
-      this.logger.error('Failed to send LINE notification:', error);
+      this.logger.error('Failed to send LINE notification to IT Team:', error);
+    }
+
+    // 🔔 Notify REPORTER via LINE when new ticket is created
+    try {
+      const imageUrl = attachmentData.length > 0 ? attachmentData[0].fileUrl : undefined;
+
+      if (lineUserId) {
+        // Direct notification for guest users (LIFF)
+        await this.lineNotificationService.notifyReporterDirectly(lineUserId, {
+          ticketCode: ticket.ticketCode,
+          status: ticket.status,
+          urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',
+          problemTitle: ticket.problemTitle,
+          description: ticket.problemDescription || ticket.problemTitle,
+          imageUrl,
+          createdAt: ticket.createdAt,
+          remark: 'ได้รับเรื่องแจ้งซ่อมของคุณแล้ว ระบบจะแจ้งเตือนเมื่อมีการอัปเดตสถานะ',
+        });
+        this.logger.log(`LINE notification sent directly to reporter: ${lineUserId}`);
+      } else if (userId) {
+        // Notification for logged-in users
+        await this.lineNotificationService.notifyRepairTicketStatusUpdate(userId, {
+          ticketCode: ticket.ticketCode,
+          problemTitle: ticket.problemTitle,
+          status: ticket.status,
+          remark: 'ได้รับเรื่องแจ้งซ่อมของคุณแล้ว ระบบจะแจ้งเตือนเมื่อมีความคืบหน้า',
+          technicianNames: [],
+          updatedAt: ticket.createdAt,
+        });
+        this.logger.log(`LINE notification sent to user ${userId} for new ticket`);
+      }
+    } catch (error) {
+      // Don't fail the ticket creation if notification fails
+      this.logger.error('Failed to send reporter LINE notification:', error);
     }
 
     return ticket;
