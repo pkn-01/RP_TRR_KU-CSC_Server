@@ -330,27 +330,31 @@ export class LineOANotificationService {
       };
     }
 
-    // Add description box
+    // Add description box (First grey box in design)
     contents.body.contents.push({
       type: 'box',
       layout: 'vertical',
-      backgroundColor: '#F3F4F6',
+      backgroundColor: '#E5E5E5',
       paddingAll: '12px',
       cornerRadius: 'md',
       contents: [
-        { type: 'text', text: payload.description || 'ไม่มีรายละเอียด', size: 'sm', color: '#4B5563', wrap: true }
+        { type: 'text', text: payload.description || 'ไม่มีรายละเอียด', size: 'sm', color: '#666666', wrap: true }
       ]
     });
 
-    // Add remark if exists
+    // Add operation details box (Second grey box in design)
     if (payload.remark) {
       contents.body.contents.push({
         type: 'box',
         layout: 'vertical',
-        paddingTop: '8px',
+        backgroundColor: '#E5E5E5',
+        paddingAll: '12px',
+        cornerRadius: 'md',
+        spacing: 'xs',
+        margin: 'md',
         contents: [
-          { type: 'text', text: 'หมายเหตุ:', size: 'xs', color: '#94A3B8' },
-          { type: 'text', text: payload.remark, size: 'sm', color: '#1F2937', wrap: true }
+          { type: 'text', text: 'รายละเอียดการดำเนินการ...', size: 'xs', color: '#666666' },
+          { type: 'text', text: payload.remark, size: 'sm', color: '#666666', wrap: true }
         ]
       });
     }
