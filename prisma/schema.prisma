@@ -9,26 +9,26 @@ datasource db {
 }
 
 model User {
-  id                Int                    @id @default(autoincrement())
+  id                Int                       @id @default(autoincrement())
   name              String
-  email             String                 @unique
+  email             String                    @unique
   password          String
-  role              Role                   @default(USER)
+  role              Role                      @default(USER)
   department        String?
   phoneNumber       String?
   lineId            String?
   profilePicture    String?
   profilePictureId  String?
-  createdAt         DateTime               @default(now())
-  updatedAt         DateTime               @updatedAt
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
   lineOALink        LineOALink?
   loans             Loan[]
   notifications     Notification[]
-  repairTickets     RepairTicket[]         @relation("RepairUserTickets")
+  repairTickets     RepairTicket[]            @relation("RepairUserTickets")
   repairAssignments RepairTicketAssignee[]
   repairLogs        RepairTicketLog[]
-  assigned          Ticket[]               @relation("AssignedTickets")
-  tickets           Ticket[]               @relation("UserTickets")
+  assigned          Ticket[]                  @relation("AssignedTickets")
+  tickets           Ticket[]                  @relation("UserTickets")
   logs              TicketLog[]
   assignedHistory   RepairAssignmentHistory[] @relation("Assigner")
   receivedHistory   RepairAssignmentHistory[] @relation("Assignee")
@@ -63,6 +63,7 @@ model Ticket {
   user               User?              @relation("UserTickets", fields: [userId], references: [id])
   logs               TicketLog[]
 }
+
 // Attachment
 model Attachment {
   id        Int      @id @default(autoincrement())
@@ -147,8 +148,8 @@ model LineNotification {
 }
 
 model RepairTicket {
-  id                      Int                    @id @default(autoincrement())
-  ticketCode              String                 @unique
+  id                      Int                       @id @default(autoincrement())
+  ticketCode              String                    @unique
   reporterName            String
   reporterDepartment      String?
   reporterPhone           String?
@@ -157,24 +158,25 @@ model RepairTicket {
   problemTitle            String
   problemDescription      String?
   location                String
-  status                  RepairTicketStatus     @default(PENDING)
-  urgency                 UrgencyLevel           @default(NORMAL)
+  status                  RepairTicketStatus        @default(PENDING)
+  urgency                 UrgencyLevel              @default(NORMAL)
   userId                  Int
   notes                   String?
-  messageToReporter       String?                // ข้อความถึงผู้แจ้ง (แยกจาก notes ภายใน)
-  estimatedCompletionDate DateTime?              // เวลาโดยประมาณที่จะเสร็จ
-  scheduledAt             DateTime               @default(now())
+  messageToReporter       String? // ข้อความถึงผู้แจ้ง (แยกจาก notes ภายใน)
+  linkingCode             String?                   @unique // รหัสสำหรับ link LINE OA (เช่น REP-12345-ABCD)
+  reporterLineUserId      String? // LINE User ID ของผู้แจ้ง (ไม่ผ่าน login)
+  estimatedCompletionDate DateTime? // เวลาโดยประมาณที่จะเสร็จ
+  scheduledAt             DateTime                  @default(now())
   completedAt             DateTime?
   cancelledAt             DateTime?
-  createdAt               DateTime               @default(now())
-  updatedAt               DateTime               @updatedAt
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
   attachments             RepairAttachment[]
-  user                    User                   @relation("RepairUserTickets", fields: [userId], references: [id], onDelete: Cascade)
+  user                    User                      @relation("RepairUserTickets", fields: [userId], references: [id], onDelete: Cascade)
   assignees               RepairTicketAssignee[]
   logs                    RepairTicketLog[]
   assignmentHistory       RepairAssignmentHistory[]
 }
-
 
 model RepairAttachment {
   id             Int          @id @default(autoincrement())

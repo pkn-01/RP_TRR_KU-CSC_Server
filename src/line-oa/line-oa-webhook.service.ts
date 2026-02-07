@@ -138,16 +138,54 @@ export class LineOAWebhookService {
           channelAccessToken: this.channelAccessToken,
         });
 
-        // Response เบื้องต้น
+        const text = message.text.trim().toUpperCase();
+
+        // Check if message is a linking code (e.g., REP-1234567890-ABCD)
+        if (text.match(/^REP-\d+-[A-Z0-9]{4}$/)) {
+          await this.handleLinkingCode(lineUserId, text, client);
+          return;
+        }
+
+        // Default response
         const reply: line.Message = {
           type: 'text',
-          text: `ขอบคุณสำหรับข้อความของคุณ: "${message.text}"\n\nกรุณาใช้เมนูด้านล่างเพื่อเข้าถึงฟีเจอร์ต่างๆ`,
+          text: `ขอบคุณสำหรับข้อความของคุณ\n\nหากต้องการรับแจ้งเตือนสถานะการซ่อม กรุณาส่งรหัสที่ได้รับหลังแจ้งซ่อม (เช่น REP-1234567890-ABCD)`,
         };
 
         await client.pushMessage(lineUserId, reply);
       } catch (error) {
         this.logger.error(`Failed to reply to message:`, error);
       }
+    }
+  }
+
+  /**
+   * Handle linking code from reporter
+   */
+  private async handleLinkingCode(lineUserId: string, linkingCode: string, client: line.Client) {
+    try {
+      const result = await this.linkingService.linkReporterLine(linkingCode, lineUserId);
+
+      let reply: line.Message;
+      if (result.success) {
+        reply = {
+          type: 'text',
+          text: `✅ ลงทะเบียนสำเร็จ!\n\nรหัสงาน: ${result.ticketCode}\n\nคุณจะได้รับแจ้งเตือนเมื่อสถานะการซ่อมมีการเปลี่ยนแปลง`,
+        };
+      } else {
+        reply = {
+          type: 'text',
+          text: `❌ ${result.error}`,
+        };
+      }
+
+      await client.pushMessage(lineUserId, reply);
+    } catch (error) {
+      this.logger.error('Error handling linking code:', error);
+      await client.pushMessage(lineUserId, {
+        type: 'text',
+        text: 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
+      });
     }
   }
 

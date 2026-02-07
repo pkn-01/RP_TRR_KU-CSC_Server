@@ -45,8 +45,22 @@ export class RepairsService {
     return basename.replace(/[^a-zA-Z0-9.-]/g, '_');
   }
 
+  /**
+   * Generate random code for LINE OA linking
+   */
+  private generateRandomCode(length: number): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  }
+
   async create(userId: number, dto: any, files?: Express.Multer.File[]) {
     const ticketCode = `REP-${Date.now()}`;
+    // Generate unique linking code for LINE OA (e.g., REP-1234567890-ABCD)
+    const linkingCode = `${ticketCode}-${this.generateRandomCode(4)}`;
     
     const attachmentData: any[] = [];
 
@@ -94,6 +108,7 @@ export class RepairsService {
     const ticket = await this.prisma.repairTicket.create({
       data: {
         ticketCode,
+        linkingCode, // For LINE OA linking
         reporterName: dto.reporterName,
         reporterDepartment: dto.reporterDepartment || null,
         reporterPhone: dto.reporterPhone || null,
@@ -319,7 +334,14 @@ export class RepairsService {
           
           // Use messageToReporter if available, otherwise fall back to notes
           const remarkMessage = dto.messageToReporter || dto.notes;
+
+          // Get ticket with attachments for image
+          const ticketWithAttachments = await this.prisma.repairTicket.findUnique({
+            where: { id: ticket.id },
+            include: { attachments: { take: 1 } },
+          });
           
+          // Notify via userId (for logged in users)
           await this.lineNotificationService.notifyRepairTicketStatusUpdate(ticket.userId, {
             ticketCode: ticket.ticketCode,
             problemTitle: ticket.problemTitle,
@@ -328,6 +350,25 @@ export class RepairsService {
             technicianNames,
             updatedAt: new Date(),
           });
+
+          // Also notify directly via reporterLineUserId (for guest users who linked via LINE OA)
+          if (ticketWithAttachments?.reporterLineUserId) {
+            const imageUrl = ticketWithAttachments.attachments?.[0]?.fileUrl;
+            await this.lineNotificationService.notifyReporterDirectly(
+              ticketWithAttachments.reporterLineUserId,
+              {
+                ticketCode: ticket.ticketCode,
+                status: dto.status,
+                urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',
+                description: ticket.problemDescription || ticket.problemTitle,
+                imageUrl,
+                createdAt: ticket.createdAt,
+                remark: remarkMessage,
+              }
+            );
+            this.logger.log(`Notified reporter directly for: ${ticket.ticketCode}`);
+          }
+          
           this.logger.log(`Notified reporter for status change: ${ticket.ticketCode} -> ${dto.status}`);
         }
       } catch (notifError) {

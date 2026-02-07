@@ -229,4 +229,35 @@ export class LineOALinkingService {
 
     return updated;
   }
+
+  /**
+   * Link reporter's LINE User ID to a ticket using linking code
+   * (For guest users who didn't use LINE Login)
+   */
+  async linkReporterLine(linkingCode: string, lineUserId: string): Promise<{ success: boolean; ticketCode?: string; error?: string }> {
+    try {
+      const ticket = await this.prisma.repairTicket.findFirst({
+        where: { linkingCode },
+      });
+
+      if (!ticket) {
+        return { success: false, error: 'ไม่พบรหัสนี้ในระบบ กรุณาตรวจสอบอีกครั้ง' };
+      }
+
+      if (ticket.reporterLineUserId) {
+        return { success: false, error: 'รหัสนี้ถูกผูกกับ LINE แล้ว' };
+      }
+
+      await this.prisma.repairTicket.update({
+        where: { id: ticket.id },
+        data: { reporterLineUserId: lineUserId },
+      });
+
+      this.logger.log(`Linked reporter LINE ${lineUserId} to ticket ${ticket.ticketCode}`);
+      return { success: true, ticketCode: ticket.ticketCode };
+    } catch (error) {
+      this.logger.error('Error linking reporter LINE:', error);
+      return { success: false, error: 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง' };
+    }
+  }
 }

@@ -205,6 +205,158 @@ export class LineOANotificationService {
   }
 
   /* =======================
+     NOTIFY REPORTER DIRECTLY (No Login)
+  ======================= */
+
+  async notifyReporterDirectly(
+    lineUserId: string,
+    payload: {
+      ticketCode: string;
+      status: string;
+      urgency: 'CRITICAL' | 'URGENT' | 'NORMAL';
+      description: string;
+      imageUrl?: string;
+      createdAt: Date;
+      remark?: string;
+    }
+  ) {
+    try {
+      const flexMessage = {
+        type: 'flex' as const,
+        altText: `อัปเดตสถานะ ${payload.ticketCode}`,
+        contents: this.createReporterFlexMessage(payload) as any,
+      };
+
+      await this.lineOAService.sendMessage(lineUserId, flexMessage);
+      await this.saveNotificationLog(lineUserId, {
+        type: 'REPAIR_REPORTER_UPDATE',
+        title: `อัปเดต ${payload.ticketCode}`,
+        message: payload.status,
+      }, NotificationStatus.SENT);
+      
+      this.logger.log(`Sent notification to reporter ${lineUserId} for ${payload.ticketCode}`);
+      return { success: true };
+    } catch (error) {
+      this.logger.error(`Failed to notify reporter:`, error.message);
+      return { success: false };
+    }
+  }
+
+  /**
+   * Create Flex Message for reporter (matching mockup design)
+   */
+  private createReporterFlexMessage(payload: {
+    ticketCode: string;
+    status: string;
+    urgency: 'CRITICAL' | 'URGENT' | 'NORMAL';
+    description: string;
+    imageUrl?: string;
+    createdAt: Date;
+    remark?: string;
+  }) {
+    const statusConfig = this.getStatusConfig(payload.status);
+    const urgencyConfig = this.getUrgencyConfig(payload.urgency);
+
+    const formattedDate = new Intl.DateTimeFormat('th-TH', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      timeZone: 'Asia/Bangkok',
+    }).format(payload.createdAt);
+
+    const contents: any = {
+      type: 'bubble',
+      size: 'mega',
+      // Header with status badges
+      header: {
+        type: 'box',
+        layout: 'horizontal',
+        backgroundColor: '#FFFFFF',
+        paddingAll: '12px',
+        spacing: 'sm',
+        contents: [
+          {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: statusConfig.color,
+            paddingAll: '4px',
+            paddingStart: '10px',
+            paddingEnd: '10px',
+            cornerRadius: 'lg',
+            contents: [{ type: 'text', text: statusConfig.text, color: '#FFFFFF', size: 'xs', weight: 'bold' }]
+          },
+          {
+            type: 'box',
+            layout: 'vertical',
+            backgroundColor: urgencyConfig.color,
+            paddingAll: '4px',
+            paddingStart: '10px',
+            paddingEnd: '10px',
+            cornerRadius: 'lg',
+            contents: [{ type: 'text', text: urgencyConfig.text, color: '#FFFFFF', size: 'xs', weight: 'bold' }]
+          }
+        ]
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '16px',
+        spacing: 'md',
+        backgroundColor: '#FFFFFF',
+        contents: [
+          // Ticket ID
+          { type: 'text', text: `ID:${payload.ticketCode}`, size: 'md', weight: 'bold', color: '#1F2937' },
+        ]
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '12px',
+        backgroundColor: '#F9FAFB',
+        contents: [
+          { type: 'text', text: `แจ้งเมื่อ ${formattedDate}`, size: 'xs', color: '#6B7280' }
+        ]
+      }
+    };
+
+    // Add image if available
+    if (payload.imageUrl) {
+      contents.hero = {
+        type: 'image',
+        url: payload.imageUrl,
+        size: 'full',
+        aspectRatio: '16:9',
+        aspectMode: 'cover',
+      };
+    }
+
+    // Add description box
+    contents.body.contents.push({
+      type: 'box',
+      layout: 'vertical',
+      backgroundColor: '#F3F4F6',
+      paddingAll: '12px',
+      cornerRadius: 'md',
+      contents: [
+        { type: 'text', text: payload.description || 'ไม่มีรายละเอียด', size: 'sm', color: '#4B5563', wrap: true }
+      ]
+    });
+
+    // Add remark if exists
+    if (payload.remark) {
+      contents.body.contents.push({
+        type: 'box',
+        layout: 'vertical',
+        paddingTop: '8px',
+        contents: [
+          { type: 'text', text: 'หมายเหตุ:', size: 'xs', color: '#94A3B8' },
+          { type: 'text', text: payload.remark, size: 'sm', color: '#1F2937', wrap: true }
+        ]
+      });
+    }
+
+    return contents;
+  }
+
+  /* =======================
      PRIVATE HELPERS
   ======================= */
 
