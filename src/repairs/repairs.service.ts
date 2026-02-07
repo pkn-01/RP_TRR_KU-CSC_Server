@@ -57,10 +57,11 @@ export class RepairsService {
     return result;
   }
 
-  async create(userId: number, dto: any, files?: Express.Multer.File[]) {
+  async create(userId: number, dto: any, files?: Express.Multer.File[], lineUserId?: string) {
     const ticketCode = `REP-${Date.now()}`;
-    // Generate unique linking code for LINE OA (e.g., REP-1234567890-ABCD)
-    const linkingCode = `${ticketCode}-${this.generateRandomCode(4)}`;
+    // Generate unique linking code for LINE OA (for guest users who didn't come from LINE)
+    // Only needed if lineUserId is not provided
+    const linkingCode = lineUserId ? undefined : `${ticketCode}-${this.generateRandomCode(4)}`;
     
     const attachmentData: any[] = [];
 
@@ -108,7 +109,8 @@ export class RepairsService {
     const ticket = await this.prisma.repairTicket.create({
       data: {
         ticketCode,
-        linkingCode, // For LINE OA linking
+        linkingCode, // For LINE OA linking (only for guest users)
+        reporterLineUserId: lineUserId || null, // Direct LINE notification (for LINE OA users)
         reporterName: dto.reporterName,
         reporterDepartment: dto.reporterDepartment || null,
         reporterPhone: dto.reporterPhone || null,
@@ -360,6 +362,7 @@ export class RepairsService {
                 ticketCode: ticket.ticketCode,
                 status: dto.status,
                 urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',
+                problemTitle: ticket.problemTitle,
                 description: ticket.problemDescription || ticket.problemTitle,
                 imageUrl,
                 createdAt: ticket.createdAt,

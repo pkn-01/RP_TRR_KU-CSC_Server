@@ -98,8 +98,9 @@ export class RepairsController {
         body.pictureUrl,
       );
 
-      // Create ticket - notification is handled inside repairsService.create()
-      return await this.repairsService.create(user.id, dto, files);
+      // Create ticket with lineUserId for direct LINE notifications
+      // Pass lineUserId separately for direct notification linking
+      return await this.repairsService.create(user.id, dto, files, body.lineUserId);
     } catch (error: any) {
       this.logger.error(error.message, error.stack);
       throw new HttpException(

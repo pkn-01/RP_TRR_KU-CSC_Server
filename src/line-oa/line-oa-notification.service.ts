@@ -214,7 +214,8 @@ export class LineOANotificationService {
       ticketCode: string;
       status: string;
       urgency: 'CRITICAL' | 'URGENT' | 'NORMAL';
-      description: string;
+      problemTitle: string;
+      description?: string;
       imageUrl?: string;
       createdAt: Date;
       remark?: string;
@@ -249,7 +250,8 @@ export class LineOANotificationService {
     ticketCode: string;
     status: string;
     urgency: 'CRITICAL' | 'URGENT' | 'NORMAL';
-    description: string;
+    problemTitle: string;
+    description?: string;
     imageUrl?: string;
     createdAt: Date;
     remark?: string;
