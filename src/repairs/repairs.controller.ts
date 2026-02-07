@@ -98,6 +98,10 @@ export class RepairsController {
         body.pictureUrl,
       );
 
+      // Log for debugging LINE notification
+      this.logger.log(`LIFF Create - lineUserId from body: ${body.lineUserId || 'NONE'}`);
+      this.logger.log(`LIFF Create - reporterLineId: ${dto.reporterLineId}`);
+
       // Create ticket with lineUserId for direct LINE notifications
       // Pass lineUserId separately for direct notification linking
       return await this.repairsService.create(user.id, dto, files, body.lineUserId);

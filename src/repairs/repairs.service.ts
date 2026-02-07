@@ -58,6 +58,9 @@ export class RepairsService {
   }
 
   async create(userId: number, dto: any, files?: Express.Multer.File[], lineUserId?: string) {
+    // Debug logging
+    this.logger.log(`Creating ticket - lineUserId parameter: ${lineUserId || 'NOT PROVIDED'}`);
+    
     const ticketCode = `REP-${Date.now()}`;
     // Generate unique linking code for LINE OA (for guest users who didn't come from LINE)
     // Only needed if lineUserId is not provided
