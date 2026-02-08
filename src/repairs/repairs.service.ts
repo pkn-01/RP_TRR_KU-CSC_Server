@@ -164,7 +164,7 @@ export class RepairsService {
           description: ticket.problemDescription || ticket.problemTitle,
           imageUrl,
           createdAt: ticket.createdAt,
-          remark: 'ได้รับเรื่องแจ้งซ่อมของคุณแล้ว ระบบจะแจ้งเตือนเมื่อมีการอัปเดตสถานะ',
+          // remark: 'ได้รับเรื่องแจ้งซ่อมของคุณแล้ว ระบบจะแจ้งเตือนเมื่อมีการอัปเดตสถานะ',
         });
         this.logger.log(`LINE notification sent directly to reporter: ${lineUserId}`);
       } else if (userId) {
@@ -173,7 +173,7 @@ export class RepairsService {
           ticketCode: ticket.ticketCode,
           problemTitle: ticket.problemTitle,
           status: ticket.status,
-          remark: 'ได้รับเรื่องแจ้งซ่อมของคุณแล้ว ระบบจะแจ้งเตือนเมื่อมีความคืบหน้า',
+          // remark: 'ได้รับเรื่องแจ้งซ่อมของคุณแล้ว ระบบจะแจ้งเตือนเมื่อมีความคืบหน้า',
           technicianNames: [],
           updatedAt: ticket.createdAt,
         });
