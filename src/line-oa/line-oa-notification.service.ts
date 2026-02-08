@@ -353,7 +353,6 @@ export class LineOANotificationService {
         spacing: 'xs',
         margin: 'md',
         contents: [
-          { type: 'text', text: 'รายละเอียดการดำเนินการ...', size: 'xs', color: '#666666' },
           { type: 'text', text: payload.remark, size: 'sm', color: '#666666', wrap: true }
         ]
       });
