@@ -609,7 +609,7 @@ export class RepairsService {
   }
 
   async getDepartmentStatistics() {
-    const departments = ['IT', 'ลูกหีบ', 'ฝ่ายอ้อย', 'กฏหมาย', 'บัญชี'];
+    const departments = ['ไอที', 'ลูกหีบ', 'ฝ่ายอ้อย', 'กฏหมาย', 'บัญชี'];
     
     const stats = await Promise.all(
       departments.map(async (dept) => {
