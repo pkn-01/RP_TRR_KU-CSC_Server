@@ -519,6 +519,125 @@ export class RepairsService {
     };
   }
 
+  async getDashboardStatistics(filter: 'day' | 'week' | 'month' = 'day', date?: Date) {
+    const targetDate = date || new Date();
+    
+    // Calculate date range based on filter
+    let startDate: Date;
+    let endDate: Date;
+    
+    if (filter === 'day') {
+      startDate = new Date(targetDate);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(targetDate);
+      endDate.setHours(23, 59, 59, 999);
+    } else if (filter === 'week') {
+      const dayOfWeek = targetDate.getDay();
+      startDate = new Date(targetDate);
+      startDate.setDate(targetDate.getDate() - dayOfWeek);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(startDate);
+      endDate.setDate(startDate.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      startDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+      endDate = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59, 999);
+    }
+
+    // Get all stats (no date filter) for main cards
+    const allStats = await this.prisma.repairTicket.groupBy({
+      by: ['status'],
+      _count: { status: true },
+    });
+
+    // Get filtered stats (with date filter) for "today" cards
+    const filteredStats = await this.prisma.repairTicket.groupBy({
+      by: ['status'],
+      where: {
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      _count: { status: true },
+    });
+
+    const getCount = (stats: any[], status: RepairTicketStatus) =>
+      stats.find(s => s.status === status)?._count.status || 0;
+
+    const allTotal = allStats.reduce((acc, curr) => acc + curr._count.status, 0);
+    const filteredTotal = filteredStats.reduce((acc, curr) => acc + curr._count.status, 0);
+
+    // Get recent repairs for the table
+    const recentRepairs = await this.prisma.repairTicket.findMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      select: {
+        id: true,
+        ticketCode: true,
+        createdAt: true,
+        problemTitle: true,
+        location: true,
+        urgency: true,
+        status: true,
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    return {
+      all: {
+        total: allTotal,
+        inProgress: getCount(allStats, RepairTicketStatus.IN_PROGRESS),
+        completed: getCount(allStats, RepairTicketStatus.COMPLETED),
+        cancelled: getCount(allStats, RepairTicketStatus.CANCELLED),
+      },
+      filtered: {
+        total: filteredTotal,
+        pending: getCount(filteredStats, RepairTicketStatus.PENDING),
+        inProgress: getCount(filteredStats, RepairTicketStatus.IN_PROGRESS),
+        completed: getCount(filteredStats, RepairTicketStatus.COMPLETED),
+        cancelled: getCount(filteredStats, RepairTicketStatus.CANCELLED),
+      },
+      recentRepairs,
+      dateRange: { startDate, endDate },
+    };
+  }
+
+  async getDepartmentStatistics() {
+    const departments = ['IT', 'ลูกหีบ', 'ฝ่ายอ้อย', 'กฏหมาย', 'บัญชี'];
+    
+    const stats = await Promise.all(
+      departments.map(async (dept) => {
+        const tickets = await this.prisma.repairTicket.findMany({
+          where: { reporterDepartment: dept },
+          select: { status: true },
+        });
+
+        const total = tickets.length;
+        const pending = tickets.filter(t => t.status === RepairTicketStatus.PENDING).length;
+        const inProgress = tickets.filter(t => t.status === RepairTicketStatus.IN_PROGRESS).length;
+        const completed = tickets.filter(t => t.status === RepairTicketStatus.COMPLETED).length;
+        const cancelled = tickets.filter(t => t.status === RepairTicketStatus.CANCELLED).length;
+
+        return {
+          department: dept,
+          total,
+          pending,
+          inProgress,
+          completed,
+          cancelled,
+        };
+      })
+    );
+
+    return stats;
+  }
+
   async getSchedule() {
     return this.prisma.repairTicket.findMany({
       select: {

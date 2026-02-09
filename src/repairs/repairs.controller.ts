@@ -236,6 +236,22 @@ export class RepairsController {
     return this.repairsService.getStatistics();
   }
 
+  @Get('statistics/dashboard')
+  @UseGuards(JwtAuthGuard)
+  async getDashboardStatistics(
+    @Query('filter') filter: 'day' | 'week' | 'month' = 'day',
+    @Query('date') dateStr?: string,
+  ) {
+    const date = dateStr ? new Date(dateStr) : new Date();
+    return this.repairsService.getDashboardStatistics(filter, date);
+  }
+
+  @Get('statistics/by-department')
+  @UseGuards(JwtAuthGuard)
+  async getDepartmentStatistics() {
+    return this.repairsService.getDepartmentStatistics();
+  }
+
   @Get('user/my-tickets')
   @UseGuards(JwtAuthGuard)
   async getUserTickets(@Req() req: any) {
