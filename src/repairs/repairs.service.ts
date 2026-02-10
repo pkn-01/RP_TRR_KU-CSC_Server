@@ -340,6 +340,33 @@ export class RepairsService {
           });
       }
 
+      // Log Operational Notes and Messages
+      if (dto.notes || dto.messageToReporter) {
+          const logs: any[] = [];
+          
+          if (dto.notes) {
+              logs.push({
+                  repairTicketId: id,
+                  action: 'NOTE',
+                  assignerId: updatedById,
+                  note: `หมายเหตุ: ${dto.notes}`
+              });
+          }
+          
+          if (dto.messageToReporter) {
+              logs.push({
+                  repairTicketId: id,
+                  action: 'MESSAGE_TO_REPORTER',
+                  assignerId: updatedById,
+                  note: `แจ้งผู้ซ่อม: ${dto.messageToReporter}`
+              });
+          }
+          
+          if (logs.length > 0) {
+              await this.prisma.repairAssignmentHistory.createMany({ data: logs });
+          }
+      }
+
       const ticket = await this.prisma.repairTicket.update({
         where: { id },
         data: updateData,
