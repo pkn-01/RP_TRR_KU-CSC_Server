@@ -1,4 +1,4 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { LineOALinkingService } from './line-oa-linking.service';
@@ -27,9 +27,13 @@ export class LineOAWebhookService {
     const bodyBuffer = rawBody || Buffer.from(JSON.stringify(body), 'utf-8');
 
     // ตรวจสอบลายเซนต์
+    // ตรวจสอบลายเซนต์
     if (!this.verifySignature(bodyBuffer, signature)) {
-      this.logger.warn('Invalid webhook signature');
-      throw new UnauthorizedException('Invalid signature');
+      this.logger.warn(`Invalid webhook signature. Body size: ${bodyBuffer.length}, Signature: ${signature}`);
+      if (!rawBody) {
+        this.logger.warn('rawBody is missing! Signature verification failed because JSON.stringify cannot reproduce exact raw body.');
+      }
+      throw new ForbiddenException('Invalid signature');
     }
 
     // จัดการ events
