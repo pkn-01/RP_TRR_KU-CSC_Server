@@ -138,18 +138,25 @@ export class LineOAWebhookService {
           channelAccessToken: this.channelAccessToken,
         });
 
-        const text = message.text.trim().toUpperCase();
+        const text = message.text.trim();
+        const textUpper = text.toUpperCase();
 
         // Check if message is a linking code (e.g., TRR-10022569001-ABCD)
-        if (text.match(/^TRR-\d+-[A-Z0-9]{4}$/)) {
-          await this.handleLinkingCode(lineUserId, text, client);
+        if (textUpper.match(/^TRR-\d+-[A-Z0-9]{4}$/)) {
+          await this.handleLinkingCode(lineUserId, textUpper, client);
+          return;
+        }
+
+        // Keyword: "แจ้งซ่อม" → ตอบกลับด้วย URL พร้อม lineUserId
+        if (text.includes('แจ้งซ่อม')) {
+          await this.handleRepairKeyword(lineUserId, client);
           return;
         }
 
         // Default response
         const reply: line.Message = {
           type: 'text',
-          text: `ขอบคุณสำหรับข้อความของคุณ\n\nหากต้องการรับแจ้งเตือนสถานะการซ่อม กรุณาส่งรหัสที่ได้รับหลังแจ้งซ่อม (เช่น TRR-10022569001-ABCD)`,
+          text: `ขอบคุณสำหรับข้อความของคุณ\n\nหากต้องการแจ้งซ่อม พิมพ์ "แจ้งซ่อม"\nหากต้องการรับแจ้งเตือนสถานะการซ่อม กรุณาส่งรหัสที่ได้รับหลังแจ้งซ่อม (เช่น TRR-10022569001-ABCD)`,
         };
 
         await client.pushMessage(lineUserId, reply);
@@ -157,6 +164,35 @@ export class LineOAWebhookService {
         this.logger.error(`Failed to reply to message:`, error);
       }
     }
+  }
+
+  /**
+   * Handle "แจ้งซ่อม" keyword → ส่ง URL พร้อม lineUserId เพื่อเปิดฟอร์มแจ้งซ่อม
+   * ผู้ใช้จะได้รับ notification อัตโนมัติเพราะ lineUserId ถูกส่งไปกับ URL
+   */
+  private async handleRepairKeyword(lineUserId: string, client: line.Client) {
+    const frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc.vercel.app';
+    const repairFormUrl = `${frontendUrl}/repairs/liff/form?lineUserId=${lineUserId}`;
+
+    this.logger.log(`Sending repair form URL to ${lineUserId}: ${repairFormUrl}`);
+
+    const message: line.Message = {
+      type: 'template',
+      altText: '🔧 แจ้งซ่อมออนไลน์ - คลิกเพื่อเปิดฟอร์ม',
+      template: {
+        type: 'buttons',
+        text: '🔧 แจ้งซ่อมออนไลน์\n\nคลิกปุ่มด้านล่างเพื่อเปิดฟอร์มแจ้งซ่อม\nคุณจะได้รับแจ้งเตือนสถานะผ่าน LINE อัตโนมัติ',
+        actions: [
+          {
+            type: 'uri',
+            label: 'เปิดฟอร์มแจ้งซ่อม',
+            uri: repairFormUrl,
+          },
+        ],
+      },
+    };
+
+    await client.pushMessage(lineUserId, message);
   }
 
   /**
