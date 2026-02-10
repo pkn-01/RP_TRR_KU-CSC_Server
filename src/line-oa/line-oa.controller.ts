@@ -14,6 +14,7 @@ import type { Request } from 'express';
 import { LineOAService } from './line-oa.service';
 import { LineOALinkingService } from './line-oa-linking.service';
 import { LineOAWebhookService } from './line-oa-webhook.service';
+import { Public } from '../auth/public.decorator';
 
 @Controller('/api/line-oa')
 export class LineOAController {
@@ -28,6 +29,7 @@ export class LineOAController {
   /**
    * LINE Webhook Endpoint
    */
+  @Public()
   @Post('webhook')
   @HttpCode(200)
   async handleWebhook(
