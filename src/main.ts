@@ -25,9 +25,7 @@ async function bootstrap() {
   // PERFORMANCE: Enable Gzip compression
   app.use(compression());
 
-  // Reduced body size limit for security (was 50mb, now 10mb)
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ limit: '10mb', extended: true }));
+  // Removed express.json middleware; relying on NestJS with '{ rawBody: true }' handling body parsing.
   
   // Serve static files from uploads directory
   app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
