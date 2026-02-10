@@ -57,11 +57,58 @@ export class RepairsService {
     return result;
   }
 
+  /**
+   * Generate repair ticket code in format: TRR-ddMMyyyyXXX
+   * Example: TRR-10022569001
+   */
+  private async generateTicketCode(): Promise<string> {
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = String(now.getFullYear() + 543); // Convert to Buddhist Year
+    
+    // Prefix: TRR-10022569
+    const prefix = `TRR-${day}${month}${year}`;
+    
+    // Find last ticket of the day with this prefix
+    const lastTicket = await this.prisma.repairTicket.findFirst({
+      where: {
+        ticketCode: {
+          startsWith: prefix,
+        },
+      },
+      orderBy: {
+        ticketCode: 'desc', // Get the latest one
+      },
+      select: {
+        ticketCode: true,
+      },
+    });
+
+    let sequence = 1;
+    
+    if (lastTicket && lastTicket.ticketCode) {
+      // Extract the sequence part (last 3 digits)
+      const lastSequenceStr = lastTicket.ticketCode.slice(-3);
+      const lastSequence = parseInt(lastSequenceStr, 10);
+      
+      if (!isNaN(lastSequence)) {
+        sequence = lastSequence + 1;
+      }
+    }
+
+    // Format sequence as 3 digits (e.g., 001, 002)
+    const sequenceStr = String(sequence).padStart(3, '0');
+    
+    return `${prefix}${sequenceStr}`;
+  }
+
   async create(userId: number, dto: any, files?: Express.Multer.File[], lineUserId?: string) {
     // Debug logging
     this.logger.log(`Creating ticket - lineUserId parameter: ${lineUserId || 'NOT PROVIDED'}`);
     
-    const ticketCode = `REP-${Date.now()}`;
+    // Generate custom ticket code: TRR-ddMMyyyyXXX
+    const ticketCode = await this.generateTicketCode();
     // Generate unique linking code for LINE OA (for guest users who didn't come from LINE)
     // Only needed if lineUserId is not provided
     const linkingCode = lineUserId ? undefined : `${ticketCode}-${this.generateRandomCode(4)}`;
