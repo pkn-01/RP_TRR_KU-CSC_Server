@@ -44,7 +44,9 @@ async function bootstrap() {
     'http://localhost:3001',
     'https://rp-trr-client-internship.vercel.app',
     'https://rp-trr-server-internship.vercel.app',
-    'https://qa-rp-trr-ku-csc-2026.vercel.app', // Added user's specific frontend URL
+    'https://rp-trr-ku-csc-2026.vercel.app',
+    'https://qa-rp-trr-ku-csc-2026.vercel.app',
+    'https://qa-rp-trr-ku-csc.vercel.app',
     ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
   ];
 
