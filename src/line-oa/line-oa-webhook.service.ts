@@ -21,9 +21,13 @@ export class LineOAWebhookService {
   /**
    * ตรวจสอบและจัดการ LINE Webhook Event
    */
-  async handleWebhook(body: any, signature: string) {
+  async handleWebhook(body: any, signature: string, rawBody?: Buffer) {
+    // If rawBody is available (from NestJS rawBody: true), use it for signature verification
+    // Otherwise fallback to JSON.stringify (which might fail verification due to formatting)
+    const bodyBuffer = rawBody || Buffer.from(JSON.stringify(body), 'utf-8');
+
     // ตรวจสอบลายเซนต์
-    if (!this.verifySignature(JSON.stringify(body), signature)) {
+    if (!this.verifySignature(bodyBuffer, signature)) {
       this.logger.warn('Invalid webhook signature');
       throw new UnauthorizedException('Invalid signature');
     }
@@ -42,7 +46,7 @@ export class LineOAWebhookService {
    * ตรวจสอบลายเซนต์ของ LINE
    * ทุก webhook request ต้องลงนามด้วย HMAC SHA256
    */
-  private verifySignature(body: string, signature: string): boolean {
+  private verifySignature(body: Buffer, signature: string): boolean {
     const hash = crypto
       .createHmac('sha256', this.channelSecret)
       .update(body)
