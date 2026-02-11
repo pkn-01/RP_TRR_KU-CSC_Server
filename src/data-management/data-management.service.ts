@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { DataTypeInfo } from './dto/clear-data.dto';
 import * as ExcelJS from 'exceljs';
 import AdmZip = require('adm-zip');
@@ -10,7 +11,10 @@ export type DataType = 'repairs' | 'tickets' | 'loans' | 'notifications' | 'stoc
 export class DataManagementService {
   private readonly logger = new Logger(DataManagementService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cloudinary: CloudinaryService,
+  ) {}
 
   private readonly dataTypeDefinitions: Record<DataType, Omit<DataTypeInfo, 'count'>> = {
     repairs: {
@@ -372,24 +376,51 @@ export class DataManagementService {
       for (const type of types) {
         switch (type) {
           case 'repairs':
+            // 1. Find all attachments to delete from Cloudinary
+            const repairAttachments = await tx.repairAttachment.findMany();
+            
+            // Delete files from Cloudinary (async, don't block transaction too long if possible, or await)
+            for (const att of repairAttachments) {
+              const publicId = this.cloudinary.extractPublicIdFromUrl(att.fileUrl);
+              if (publicId) {
+                // We use catch here to ensure one failure doesn't stop the whole process
+                await this.cloudinary.deleteFile(publicId).catch(err => 
+                  this.logger.error(`Failed to delete Cloudinary file ${publicId}:`, err)
+                );
+              }
+            }
+            
             // Delete in order due to relations
             const repairLogs = await tx.repairTicketLog.deleteMany();
             const repairAssignees = await tx.repairTicketAssignee.deleteMany();
-            const repairAttachments = await tx.repairAttachment.deleteMany();
+            const repairAttachmentsDeleted = await tx.repairAttachment.deleteMany();
             const repairs = await tx.repairTicket.deleteMany();
             deleted['repairs'] = repairs.count;
             deleted['repairLogs'] = repairLogs.count;
             deleted['repairAssignees'] = repairAssignees.count;
-            deleted['repairAttachments'] = repairAttachments.count;
+            deleted['repairAttachments'] = repairAttachmentsDeleted.count;
             break;
 
           case 'tickets':
+            // 1. Find all attachments to delete from Cloudinary
+            const attachments = await tx.attachment.findMany();
+            
+             // Delete files from Cloudinary
+            for (const att of attachments) {
+              const publicId = this.cloudinary.extractPublicIdFromUrl(att.fileUrl);
+              if (publicId) {
+                await this.cloudinary.deleteFile(publicId).catch(err => 
+                  this.logger.error(`Failed to delete Cloudinary file ${publicId}:`, err)
+                );
+              }
+            }
+
             const ticketLogs = await tx.ticketLog.deleteMany();
-            const attachments = await tx.attachment.deleteMany();
+            const attachmentsDeleted = await tx.attachment.deleteMany();
             const tickets = await tx.ticket.deleteMany();
             deleted['tickets'] = tickets.count;
             deleted['ticketLogs'] = ticketLogs.count;
-            deleted['attachments'] = attachments.count;
+            deleted['attachments'] = attachmentsDeleted.count;
             break;
 
           case 'loans':

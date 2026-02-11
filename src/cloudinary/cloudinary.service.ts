@@ -63,4 +63,28 @@ export class CloudinaryService {
       throw error;
     }
   }
+
+  /**
+   * Extract public ID from Cloudinary URL
+   * @param url - Cloudinary URL
+   * @returns Public ID or null if not found
+   */
+  extractPublicIdFromUrl(url: string): string | null {
+    try {
+      if (!url) return null;
+      
+      // Example URL: https://res.cloudinary.com/cloudname/image/upload/v1234567890/folder/filename.jpg
+      const regex = /\/upload\/(?:v\d+\/)?(.+)\.[^.]+$/;
+      const match = url.match(regex);
+      
+      if (match && match[1]) {
+        return match[1];
+      }
+      
+      return null;
+    } catch (error) {
+      this.logger.error('Error extracting public ID from URL:', error);
+      return null;
+    }
+  }
 }
