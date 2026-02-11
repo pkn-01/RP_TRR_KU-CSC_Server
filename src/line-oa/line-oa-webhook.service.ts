@@ -181,7 +181,7 @@ export class LineOAWebhookService {
    * ผู้ใช้จะได้รับ notification อัตโนมัติเพราะ lineUserId ถูกส่งไปกับ URL
    */
   private async handleRepairKeyword(lineUserId: string, client: line.Client) {
-    const frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc.vercel.app';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://rp-trr-ku-csc-2026.vercel.app';
     const repairFormUrl = `${frontendUrl}/repairs/liff/form?lineUserId=${lineUserId}`;
 
     this.logger.log(`Sending repair form URL to ${lineUserId}: ${repairFormUrl}`);
