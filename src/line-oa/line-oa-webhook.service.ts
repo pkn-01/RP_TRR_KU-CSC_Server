@@ -205,12 +205,12 @@ export class LineOAWebhookService {
       if (result.success) {
         reply = {
           type: 'text',
-          text: `✅ ลงทะเบียนสำเร็จ!\n\nรหัสงาน: ${result.ticketCode}\n\nคุณจะได้รับแจ้งเตือนเมื่อสถานะการซ่อมมีการเปลี่ยนแปลง`,
+          text: `ลงทะเบียนสำเร็จ!\n\nรหัสงาน: ${result.ticketCode}\n\nคุณจะได้รับแจ้งเตือนเมื่อสถานะการซ่อมมีการเปลี่ยนแปลง`,
         };
       } else {
         reply = {
           type: 'text',
-          text: `❌ ${result.error}`,
+          text: `${result.error}`,
         };
       }
 
