@@ -10,14 +10,25 @@ import { LineNotificationStatus } from '@prisma/client';
 const NotificationStatus = LineNotificationStatus;
 
 const COLORS = {
-  CRITICAL: '#D32F2F',
-  URGENT: '#F57C00',
-  NORMAL: '#2E7D32',
-  SUCCESS: '#2ECC71',
-  INFO: '#3498DB',
-  WARNING: '#F39C12',
-  SECONDARY: '#95A5A6',
-  PRIMARY: '#34495E',
+  // Urgency
+  CRITICAL: '#DC2626',
+  URGENT: '#EA580C',
+  NORMAL: '#16A34A',
+  // Status
+  SUCCESS: '#059669',
+  INFO: '#2563EB',
+  WARNING: '#D97706',
+  SECONDARY: '#6B7280',
+  PRIMARY: '#1E293B',
+  // UI
+  HEADER_DARK: '#0F172A',
+  CARD_BG: '#FFFFFF',
+  SECTION_BG: '#F8FAFC',
+  BORDER: '#E2E8F0',
+  LABEL: '#64748B',
+  VALUE: '#1E293B',
+  SUBTLE: '#94A3B8',
+  FOOTER_BG: '#F1F5F9',
 };
 
 /* =======================
@@ -261,102 +272,128 @@ export class LineOANotificationService {
 
     const formattedDate = new Intl.DateTimeFormat('th-TH', {
       day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
       timeZone: 'Asia/Bangkok',
     }).format(payload.createdAt);
+
+    const bodyContents: any[] = [
+      // ── Status + Urgency Badges ──
+      {
+        type: 'box',
+        layout: 'horizontal',
+        spacing: 'sm',
+        contents: [
+          {
+            type: 'box', layout: 'horizontal',
+            backgroundColor: statusConfig.color,
+            cornerRadius: 'xl',
+            paddingAll: '6px', paddingStart: '12px', paddingEnd: '12px',
+            contents: [
+              { type: 'text', text: `${statusConfig.icon} ${statusConfig.text}`, color: '#FFFFFF', size: 'xs', weight: 'bold' },
+            ],
+          },
+          {
+            type: 'box', layout: 'horizontal',
+            backgroundColor: urgencyConfig.color + '20',
+            cornerRadius: 'xl',
+            paddingAll: '6px', paddingStart: '12px', paddingEnd: '12px',
+            contents: [
+              { type: 'text', text: urgencyConfig.text, color: urgencyConfig.color, size: 'xs', weight: 'bold' },
+            ],
+          },
+        ],
+      },
+      // ── Ticket ID Section ──
+      {
+        type: 'box', layout: 'vertical',
+        margin: 'lg',
+        spacing: 'xs',
+        contents: [
+          { type: 'text', text: 'หมายเลขงาน', size: 'xxs', color: COLORS.SUBTLE },
+          { type: 'text', text: payload.ticketCode, size: 'xl', weight: 'bold', color: COLORS.VALUE },
+        ],
+      },
+      { type: 'separator', margin: 'lg', color: COLORS.BORDER },
+      // ── Problem Title ──
+      {
+        type: 'box', layout: 'vertical',
+        margin: 'lg',
+        spacing: 'xs',
+        contents: [
+          { type: 'text', text: '📋 ปัญหาที่แจ้ง', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+          { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: COLORS.VALUE, wrap: true },
+        ],
+      },
+    ];
+
+    // ── Description Box ──
+    if (payload.description && payload.description !== payload.problemTitle) {
+      bodyContents.push({
+        type: 'box', layout: 'vertical',
+        backgroundColor: COLORS.SECTION_BG,
+        paddingAll: '12px',
+        cornerRadius: 'md',
+        margin: 'md',
+        contents: [
+          { type: 'text', text: '📝 รายละเอียด', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+          { type: 'text', text: payload.description, size: 'sm', color: COLORS.VALUE, wrap: true, margin: 'xs' },
+        ],
+      });
+    }
+
+    // ── Remark Box (operation detail from technician/admin) ──
+    if (payload.remark) {
+      bodyContents.push({
+        type: 'box', layout: 'vertical',
+        backgroundColor: '#FFF7ED',
+        paddingAll: '12px',
+        cornerRadius: 'md',
+        margin: 'md',
+        borderColor: '#FDBA7440',
+        borderWidth: '1px',
+        contents: [
+          { type: 'text', text: '💬 หมายเหตุจากเจ้าหน้าที่', size: 'xxs', color: '#92400E', weight: 'bold' },
+          { type: 'text', text: payload.remark, size: 'sm', color: '#78350F', wrap: true, margin: 'xs' },
+        ],
+      });
+    }
 
     const contents: any = {
       type: 'bubble',
       size: 'mega',
-      // Header with status badges
-      header: {
-        type: 'box',
-        layout: 'horizontal',
-        backgroundColor: '#FFFFFF',
-        paddingAll: '12px',
-        spacing: 'sm',
-        contents: [
-          {
-            type: 'box',
-            layout: 'vertical',
-            backgroundColor: statusConfig.color,
-            paddingAll: '4px',
-            paddingStart: '10px',
-            paddingEnd: '10px',
-            cornerRadius: 'lg',
-            contents: [{ type: 'text', text: statusConfig.text, color: '#FFFFFF', size: 'xs', weight: 'bold' }]
-          },
-          {
-            type: 'box',
-            layout: 'vertical',
-            backgroundColor: urgencyConfig.color,
-            paddingAll: '4px',
-            paddingStart: '10px',
-            paddingEnd: '10px',
-            cornerRadius: 'lg',
-            contents: [{ type: 'text', text: urgencyConfig.text, color: '#FFFFFF', size: 'xs', weight: 'bold' }]
-          }
-        ]
-      },
+      // Hero image (if available)
+      ...(payload.imageUrl ? {
+        hero: {
+          type: 'image',
+          url: payload.imageUrl,
+          size: 'full',
+          aspectRatio: '20:13',
+          aspectMode: 'cover',
+        },
+      } : {}),
       body: {
         type: 'box',
         layout: 'vertical',
-        paddingAll: '16px',
-        spacing: 'md',
-        backgroundColor: '#FFFFFF',
-        contents: [
-          // Ticket ID
-          { type: 'text', text: `ID:${payload.ticketCode}`, size: 'md', weight: 'bold', color: '#1F2937' },
-        ]
+        paddingAll: '20px',
+        spacing: 'none',
+        backgroundColor: COLORS.CARD_BG,
+        contents: bodyContents,
       },
       footer: {
         type: 'box',
-        layout: 'vertical',
-        paddingAll: '12px',
-        backgroundColor: '#F9FAFB',
+        layout: 'horizontal',
+        paddingAll: '16px',
+        backgroundColor: COLORS.FOOTER_BG,
+        justifyContent: 'space-between',
         contents: [
-          { type: 'text', text: `แจ้งเมื่อ ${formattedDate}`, size: 'xs', color: '#6B7280' }
-        ]
-      }
+          { type: 'text', text: `🕐 แจ้งเมื่อ ${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
+          { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: COLORS.SUBTLE, align: 'end' },
+        ],
+      },
+      styles: {
+        footer: { separator: true, separatorColor: COLORS.BORDER },
+      },
     };
-
-    // Add image if available
-    if (payload.imageUrl) {
-      contents.hero = {
-        type: 'image',
-        url: payload.imageUrl,
-        size: 'full',
-        aspectRatio: '16:9',
-        aspectMode: 'cover',
-      };
-    }
-
-    // Add description box (First grey box in design)
-    contents.body.contents.push({
-      type: 'box',
-      layout: 'vertical',
-      backgroundColor: '#E5E5E5',
-      paddingAll: '12px',
-      cornerRadius: 'md',
-      contents: [
-        { type: 'text', text: payload.description || 'ไม่มีรายละเอียด', size: 'sm', color: '#666666', wrap: true }
-      ]
-    });
-
-    // Add operation details box (Second grey box in design)
-    if (payload.remark) {
-      contents.body.contents.push({
-        type: 'box',
-        layout: 'vertical',
-        backgroundColor: '#E5E5E5',
-        paddingAll: '12px',
-        cornerRadius: 'md',
-        spacing: 'xs',
-        margin: 'md',
-        contents: [
-          { type: 'text', text: payload.remark, size: 'sm', color: '#666666', wrap: true }
-        ]
-      });
-    }
 
     return contents;
   }
@@ -409,84 +446,100 @@ export class LineOANotificationService {
   private createRepairTicketFlex(payload: RepairTicketNotificationPayload) {
     const urgency = this.getUrgencyConfig(payload.urgency);
 
+    const formattedDate = new Intl.DateTimeFormat('th-TH', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+      timeZone: 'Asia/Bangkok',
+    }).format(new Date(payload.createdAt));
+
+    const bodyContents: any[] = [
+      // ── Problem Title ──
+      {
+        type: 'box', layout: 'vertical',
+        spacing: 'xs',
+        contents: [
+          { type: 'text', text: '📋 ปัญหาที่แจ้ง', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+          { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: COLORS.VALUE, wrap: true },
+        ],
+      },
+      // ── Info Card ──
+      {
+        type: 'box', layout: 'vertical',
+        backgroundColor: COLORS.SECTION_BG,
+        paddingAll: '14px',
+        cornerRadius: 'lg',
+        margin: 'lg',
+        spacing: 'sm',
+        contents: [
+          this.createInfoRow('👤', 'ผู้แจ้ง', payload.reporterName, true),
+          this.createInfoRow('🏢', 'แผนก', payload.department),
+          this.createInfoRow('📍', 'สถานที่', payload.location),
+        ],
+      },
+    ];
+
+    // ── Description ──
+    if (payload.problemDescription) {
+      bodyContents.push({
+        type: 'box', layout: 'vertical',
+        backgroundColor: COLORS.SECTION_BG,
+        paddingAll: '12px',
+        cornerRadius: 'md',
+        margin: 'md',
+        contents: [
+          { type: 'text', text: '📝 รายละเอียดเพิ่มเติม', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+          { type: 'text', text: payload.problemDescription, size: 'sm', color: COLORS.VALUE, wrap: true, margin: 'xs' },
+        ],
+      });
+    }
+
     return {
       type: 'bubble',
       size: 'mega',
       header: {
         type: 'box',
         layout: 'horizontal',
-        backgroundColor: urgency.color,
-        paddingAll: '15px',
+        backgroundColor: COLORS.HEADER_DARK,
+        paddingAll: '18px',
         contents: [
           {
-            type: 'box',
-            layout: 'vertical',
-            flex: 1,
+            type: 'box', layout: 'vertical', flex: 1,
             contents: [
-              { type: 'text', text: 'รายงานแจ้งซ่อมใหม่', color: '#FFFFFF', weight: 'bold', size: 'md' },
-              { type: 'text', text: payload.ticketCode, color: '#FFFFFF', size: 'xs', margin: 'xs' },
+              { type: 'text', text: '🔔 แจ้งซ่อมใหม่', color: '#FFFFFF', weight: 'bold', size: 'lg' },
+              { type: 'text', text: payload.ticketCode, color: '#94A3B8', size: 'sm', margin: 'sm' },
             ],
           },
           {
-            type: 'box',
-            layout: 'vertical',
-            backgroundColor: '#FFFFFF33',
-            cornerRadius: 'md',
-            paddingAll: '4px',
-            paddingStart: '8px',
-            paddingEnd: '8px',
-            justifyContent: 'center',
-            contents: [{ type: 'text', text: urgency.text, color: '#FFFFFF', size: 'xxs', weight: 'bold' }]
-          }
+            type: 'box', layout: 'vertical',
+            backgroundColor: urgency.color,
+            cornerRadius: 'xl',
+            paddingAll: '6px', paddingStart: '12px', paddingEnd: '12px',
+            justifyContent: 'center', height: '28px',
+            contents: [
+              { type: 'text', text: `${urgency.icon} ${urgency.text}`, color: '#FFFFFF', size: 'xxs', weight: 'bold' },
+            ],
+          },
         ],
       },
       body: {
-        type: 'box',
-        layout: 'vertical',
-        paddingAll: '16px',
-        spacing: 'md',
+        type: 'box', layout: 'vertical',
+        paddingAll: '20px',
+        spacing: 'none',
+        backgroundColor: COLORS.CARD_BG,
+        contents: bodyContents,
+      },
+      footer: {
+        type: 'box', layout: 'horizontal',
+        paddingAll: '14px',
+        backgroundColor: COLORS.FOOTER_BG,
+        justifyContent: 'space-between',
         contents: [
-          {
-            type: 'box',
-            layout: 'vertical',
-            spacing: 'xs',
-            contents: [
-              { type: 'text', text: 'ปัญหาที่แจ้ง', size: 'xs', color: '#94A3B8' },
-              { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: '#1F2937', wrap: true },
-            ],
-          },
-          {
-            type: 'box',
-            layout: 'vertical',
-            backgroundColor: '#F8FAFC',
-            paddingAll: '12px',
-            cornerRadius: 'md',
-            spacing: 'xs',
-            contents: [
-              {
-                type: 'box', layout: 'horizontal', spacing: 'sm',
-                contents: [
-                  { type: 'text', text: 'ผู้แจ้ง:', size: 'xs', color: '#64748B', flex: 2 },
-                  { type: 'text', text: payload.reporterName, size: 'xs', color: '#334155', weight: 'bold', flex: 5 }
-                ]
-              },
-              {
-                type: 'box', layout: 'horizontal', spacing: 'sm',
-                contents: [
-                  { type: 'text', text: 'แผนก:', size: 'xs', color: '#64748B', flex: 2 },
-                  { type: 'text', text: payload.department, size: 'xs', color: '#334155', flex: 5 }
-                ]
-              },
-              {
-                type: 'box', layout: 'horizontal', spacing: 'sm',
-                contents: [
-                  { type: 'text', text: 'สถานที่:', size: 'xs', color: '#64748B', flex: 2 },
-                  { type: 'text', text: payload.location, size: 'xs', color: '#334155', flex: 5 }
-                ]
-              }
-            ]
-          }
+          { type: 'text', text: `🕐 ${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
+          { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: COLORS.SUBTLE, align: 'end' },
         ],
+      },
+      styles: {
+        footer: { separator: true, separatorColor: COLORS.BORDER },
       },
     };
   }
@@ -494,213 +547,250 @@ export class LineOANotificationService {
   private createTechnicianAssignmentFlex(payload: any, actionText: string) {
     const urgency = this.getUrgencyConfig(payload.urgency);
 
+    const formattedDate = new Intl.DateTimeFormat('th-TH', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+      timeZone: 'Asia/Bangkok',
+    }).format(new Date());
+
     return {
       type: 'bubble',
       size: 'mega',
       header: {
         type: 'box',
-        layout: 'vertical',
-        backgroundColor: '#111827',
-        paddingAll: '15px',
+        layout: 'horizontal',
+        backgroundColor: COLORS.HEADER_DARK,
+        paddingAll: '18px',
         contents: [
-          { type: 'text', text: `${actionText}`, color: '#FFFFFF', weight: 'bold', size: 'md' },
-          { type: 'text', text: payload.ticketCode, color: '#FFFFFF', size: 'xs', margin: 'xs', opacity: '0.7' },
+          {
+            type: 'box', layout: 'vertical', flex: 1,
+            contents: [
+              { type: 'text', text: `🔧 ${actionText}`, color: '#FFFFFF', weight: 'bold', size: 'md' },
+              { type: 'text', text: payload.ticketCode, color: '#94A3B8', size: 'sm', margin: 'sm' },
+            ],
+          },
+          {
+            type: 'box', layout: 'vertical',
+            backgroundColor: urgency.color,
+            cornerRadius: 'xl',
+            paddingAll: '6px', paddingStart: '12px', paddingEnd: '12px',
+            justifyContent: 'center', height: '28px',
+            contents: [
+              { type: 'text', text: `${urgency.icon} ${urgency.text}`, color: '#FFFFFF', size: 'xxs', weight: 'bold' },
+            ],
+          },
         ],
       },
       body: {
-        type: 'box',
-        layout: 'vertical',
-        paddingAll: '16px',
-        spacing: 'md',
+        type: 'box', layout: 'vertical',
+        paddingAll: '20px',
+        spacing: 'none',
+        backgroundColor: COLORS.CARD_BG,
         contents: [
+          // ── Problem Title ──
           {
-            type: 'box',
-            layout: 'horizontal',
-            justifyContent: 'space-between',
-            alignItems: 'center',
+            type: 'box', layout: 'vertical',
+            spacing: 'xs',
             contents: [
-              { type: 'text', text: '🔧 รายละเอียดงาน', size: 'xs', color: '#94A3B8' },
-              {
-                type: 'box', layout: 'vertical', backgroundColor: urgency.color + '20',
-                paddingAll: '2px', paddingStart: '8px', paddingEnd: '8px', cornerRadius: 'md',
-                contents: [{ type: 'text', text: urgency.text, color: urgency.color, size: '10px', weight: 'bold' }]
-              }
-            ]
+              { type: 'text', text: '📋 รายละเอียดงาน', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+              { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: COLORS.VALUE, wrap: true },
+            ],
           },
-          { type: 'text', text: payload.problemTitle, weight: 'bold', size: 'md', color: '#1F2937', wrap: true },
-          { type: 'separator', margin: 'sm' },
+          { type: 'separator', margin: 'lg', color: COLORS.BORDER },
+          // ── Info Card ──
           {
-            type: 'box', layout: 'vertical', spacing: 'xs',
+            type: 'box', layout: 'vertical',
+            backgroundColor: COLORS.SECTION_BG,
+            paddingAll: '14px',
+            cornerRadius: 'lg',
+            margin: 'lg',
+            spacing: 'sm',
             contents: [
-              {
-                type: 'box', layout: 'horizontal',
-                contents: [
-                  { type: 'text', text: 'ผู้แจ้ง:', size: 'xs', color: '#64748B', flex: 2 },
-                  { type: 'text', text: payload.reporterName, size: 'xs', color: '#334155', flex: 5 }
-                ]
-              },
-            ]
-          }
+              this.createInfoRow('👤', 'ผู้แจ้ง', payload.reporterName, true),
+              this.createInfoRow('⚡', 'ความเร่งด่วน', urgency.text),
+            ],
+          },
         ],
+      },
+      footer: {
+        type: 'box', layout: 'horizontal',
+        paddingAll: '14px',
+        backgroundColor: COLORS.FOOTER_BG,
+        justifyContent: 'space-between',
+        contents: [
+          { type: 'text', text: `🕐 ${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
+          { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: COLORS.SUBTLE, align: 'end' },
+        ],
+      },
+      styles: {
+        footer: { separator: true, separatorColor: COLORS.BORDER },
       },
     };
   }
 
   private createStatusUpdateFlex(payload: RepairStatusUpdatePayload) {
     const config = this.getStatusConfig(payload.status);
-    
+
     const formattedDate = new Intl.DateTimeFormat('th-TH', {
-      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', 
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
       timeZone: 'Asia/Bangkok',
     }).format(payload.updatedAt || new Date());
+
+    const hasTechnician = payload.technicianNames && payload.technicianNames.length > 0;
+
+    const bodyContents: any[] = [];
+
+    // ── Status Badge ──
+    bodyContents.push({
+      type: 'box', layout: 'horizontal',
+      contents: [
+        {
+          type: 'box', layout: 'horizontal',
+          backgroundColor: config.color,
+          cornerRadius: 'xl',
+          paddingAll: '6px', paddingStart: '14px', paddingEnd: '14px',
+          contents: [
+            { type: 'text', text: `${config.icon} ${config.text}`, color: '#FFFFFF', size: 'sm', weight: 'bold' },
+          ],
+        },
+      ],
+    });
+
+    // ── Ticket Code ──
+    bodyContents.push({
+      type: 'box', layout: 'vertical',
+      margin: 'lg',
+      spacing: 'xs',
+      contents: [
+        { type: 'text', text: 'หมายเลขงาน', size: 'xxs', color: COLORS.SUBTLE },
+        { type: 'text', text: payload.ticketCode, size: 'xl', weight: 'bold', color: COLORS.VALUE },
+      ],
+    });
+
+    // ── Problem Title ──
+    if (payload.problemTitle) {
+      bodyContents.push({ type: 'separator', margin: 'lg', color: COLORS.BORDER });
+      bodyContents.push({
+        type: 'box', layout: 'vertical',
+        margin: 'lg',
+        spacing: 'xs',
+        contents: [
+          { type: 'text', text: '📋 ปัญหาที่แจ้ง', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+          { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: COLORS.VALUE, wrap: true },
+        ],
+      });
+    }
+
+    // ── Technician Section ──
+    bodyContents.push({
+      type: 'box', layout: 'horizontal',
+      spacing: 'md',
+      alignItems: 'center',
+      margin: 'lg',
+      paddingAll: '12px',
+      backgroundColor: COLORS.SECTION_BG,
+      cornerRadius: 'lg',
+      contents: [
+        {
+          type: 'box', layout: 'vertical',
+          width: '40px', height: '40px',
+          backgroundColor: hasTechnician ? '#ECFDF5' : '#FFFBEB',
+          cornerRadius: 'xxl',
+          justifyContent: 'center', alignItems: 'center',
+          contents: [
+            { type: 'text', text: hasTechnician ? '👨‍🔧' : '⏳', size: 'lg' },
+          ],
+        },
+        {
+          type: 'box', layout: 'vertical', flex: 1,
+          contents: [
+            { type: 'text', text: 'ผู้รับผิดชอบ', size: 'xxs', color: COLORS.LABEL },
+            {
+              type: 'text',
+              text: hasTechnician ? payload.technicianNames!.join(', ') : 'รอมอบหมาย',
+              size: 'sm', weight: 'bold',
+              color: hasTechnician ? '#059669' : '#D97706',
+              wrap: true,
+            },
+          ],
+        },
+      ],
+    });
+
+    // ── Remark ──
+    if (payload.remark) {
+      bodyContents.push({
+        type: 'box', layout: 'vertical',
+        backgroundColor: '#FFF7ED',
+        paddingAll: '12px',
+        cornerRadius: 'md',
+        margin: 'md',
+        borderColor: '#FDBA7440',
+        borderWidth: '1px',
+        contents: [
+          { type: 'text', text: '💬 หมายเหตุ', size: 'xxs', color: '#92400E', weight: 'bold' },
+          { type: 'text', text: payload.remark, size: 'sm', color: '#78350F', wrap: true, margin: 'xs' },
+        ],
+      });
+    }
 
     return {
       type: 'bubble',
       size: 'mega',
-      // Header - Compact Status Banner
-      header: {
-        type: 'box',
-        layout: 'horizontal',
-        backgroundColor: config.color,
-        paddingAll: '15px',
-        spacing: 'md',
+      body: {
+        type: 'box', layout: 'vertical',
+        paddingAll: '20px',
+        spacing: 'none',
+        backgroundColor: COLORS.CARD_BG,
+        contents: bodyContents,
+      },
+      footer: {
+        type: 'box', layout: 'horizontal',
+        paddingAll: '14px',
+        backgroundColor: COLORS.FOOTER_BG,
+        justifyContent: 'space-between',
         contents: [
-          {
-            type: 'box',
-            layout: 'vertical',
-            flex: 1,
-            contents: [
-              { 
-                type: 'text', 
-                text: `${config.text}`, 
-                color: '#FFFFFF', 
-                weight: 'bold', 
-                size: 'lg' 
-              },
-              { 
-                type: 'text', 
-                text: payload.ticketCode, 
-                color: '#FFFFFF', 
-                size: 'xs', 
-                margin: 'xs',
-                decoration: 'none'
-              },
-            ],
-          },
+          { type: 'text', text: `🕐 อัปเดต ${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
+          { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: COLORS.SUBTLE, align: 'end' },
         ],
       },
-      // Body - Clean Information Layout
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        paddingAll: '16px',
-        spacing: 'md',
-        backgroundColor: '#FFFFFF',
-        contents: [
-          // Problem Title
-          ...(payload.problemTitle ? [{
-            type: 'box',
-            layout: 'vertical',
-            spacing: 'xs',
-            contents: [
-              { type: 'text', text: 'ปัญหาที่แจ้ง', size: 'xs', color: '#94A3B8' },
-              { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: '#1F2937', wrap: true },
-            ],
-          }] : []),
-          // Technician Info
-          {
-            type: 'box',
-            layout: 'horizontal',
-            spacing: 'md',
-            alignItems: 'center',
-            paddingTop: '12px',
-            paddingBottom: '12px',
-            contents: [
-              {
-                type: 'box',
-                layout: 'vertical',
-                width: '36px',
-                height: '36px',
-                backgroundColor: payload.technicianNames && payload.technicianNames.length > 0 ? '#10B981' : '#F59E0B',
-                cornerRadius: 'xxl',
-                justifyContent: 'center',
-                alignItems: 'center',
-                contents: [
-                  { type: 'text', text: payload.technicianNames && payload.technicianNames.length > 0 ? '👨‍🔧' : '⏳', size: 'md' }
-                ],
-              },
-              {
-                type: 'box',
-                layout: 'vertical',
-                flex: 1,
-                contents: [
-                  { type: 'text', text: 'ผู้รับผิดชอบ', size: 'xxs', color: '#94A3B8' },
-                  { 
-                    type: 'text', 
-                    text: payload.technicianNames && payload.technicianNames.length > 0 
-                      ? payload.technicianNames.join(', ') 
-                      : 'รอมอบหมาย', 
-                    size: 'sm', 
-                    weight: 'bold', 
-                    color: payload.technicianNames && payload.technicianNames.length > 0 ? '#059669' : '#D97706',
-                    wrap: true
-                  },
-                ],
-              },
-            ],
-          },
-          // Remark (if any)
-          ...(payload.remark ? [{
-            type: 'box',
-            layout: 'vertical',
-            backgroundColor: '#F9FAFB',
-            cornerRadius: 'md',
-            paddingAll: '12px',
-            contents: [
-              { type: 'text', text: 'หมายเหตุ', size: 'xxs', color: '#6B7280' },
-              { type: 'text', text: payload.remark, size: 'sm', color: '#374151', wrap: true, margin: 'xs' },
-            ],
-          }] : []),
-          // Timestamp
-          {
-            type: 'box',
-            layout: 'horizontal',
-            justifyContent: 'flex-end',
-            contents: [
-              { type: 'text', text: `อัปเดต: ${formattedDate}`, size: 'xxs', color: '#9CA3AF' },
-            ],
-          },
-        ],
+      styles: {
+        footer: { separator: true, separatorColor: COLORS.BORDER },
       },
     };
   }
 
-  private createFlexRow(label: string, value: string, bold = false) {
+  /**
+   * Helper: create a labeled info row with icon for use in info boxes
+   */
+  private createInfoRow(icon: string, label: string, value: string, bold = false) {
     return {
-      type: 'box', layout: 'baseline',
+      type: 'box', layout: 'horizontal', spacing: 'sm',
       contents: [
-        { type: 'text', text: label, size: 'sm', color: '#AAAAAA', flex: 2 },
-        { type: 'text', text: value, size: 'sm', wrap: true, flex: 5, weight: bold ? 'bold' : 'regular' },
+        { type: 'text', text: `${icon} ${label}`, size: 'xs', color: COLORS.LABEL, flex: 3 },
+        { type: 'text', text: value, size: 'xs', color: COLORS.VALUE, flex: 5, weight: bold ? 'bold' : 'regular', wrap: true },
       ],
     };
   }
 
-  private getUrgencyConfig(level: string) {
+  private getUrgencyConfig(level: string): { color: string; text: string; icon: string } {
     return ({
-      CRITICAL: { color: COLORS.CRITICAL, text: 'ด่วนที่สุด' },
-      URGENT: { color: COLORS.URGENT, text: 'ด่วน' },
-      NORMAL: { color: COLORS.NORMAL, text: 'ปกติ' },
-    }[level] || { color: COLORS.NORMAL, text: 'ปกติ' });
+      CRITICAL: { color: COLORS.CRITICAL, text: 'ด่วนที่สุด', icon: '🔴' },
+      URGENT: { color: COLORS.URGENT, text: 'ด่วน', icon: '🟠' },
+      NORMAL: { color: COLORS.NORMAL, text: 'ปกติ', icon: '🟢' },
+    }[level] || { color: COLORS.NORMAL, text: 'ปกติ', icon: '🟢' });
   }
 
-  private getStatusConfig(status: string) {
+  private getStatusConfig(status: string): { color: string; text: string; icon: string } {
     return ({
-      PENDING: { color: COLORS.WARNING, text: 'รอดำเนินการ' },
-      ASSIGNED: { color: COLORS.INFO, text: 'มอบหมายแล้ว' },
-      IN_PROGRESS: { color: COLORS.INFO, text: 'กำลังดำเนินการ' },
-      COMPLETED: { color: COLORS.SUCCESS, text: 'เสร็จสิ้น' },
-      WAITING_USER: { color: COLORS.WARNING, text: 'รอข้อมูลจากผู้แจ้ง' },
-      CANCELLED: { color: COLORS.SECONDARY, text: 'ยกเลิก' },
-    }[status] || { color: COLORS.PRIMARY, text: status });
+      PENDING: { color: COLORS.WARNING, text: 'รอดำเนินการ', icon: '⏳' },
+      ASSIGNED: { color: COLORS.INFO, text: 'มอบหมายแล้ว', icon: '📌' },
+      IN_PROGRESS: { color: COLORS.INFO, text: 'กำลังดำเนินการ', icon: '🔧' },
+      COMPLETED: { color: COLORS.SUCCESS, text: 'เสร็จสิ้น', icon: '✅' },
+      WAITING_PARTS: { color: COLORS.WARNING, text: 'รออะไหล่', icon: '📦' },
+      WAITING_USER: { color: COLORS.WARNING, text: 'รอข้อมูลจากผู้แจ้ง', icon: '📩' },
+      CANCELLED: { color: COLORS.SECONDARY, text: 'ยกเลิก', icon: '❌' },
+    }[status] || { color: COLORS.PRIMARY, text: status, icon: '📄' });
   }
 }
