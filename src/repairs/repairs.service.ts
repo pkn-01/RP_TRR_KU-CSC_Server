@@ -493,7 +493,12 @@ export class RepairsService {
           const technicianNames = ticket.assignees.map(a => a.user.name);
           
           // Use messageToReporter if available, otherwise fall back to notes
-          const remarkMessage = dto.messageToReporter || dto.notes;
+          // SPECIAL CASE: If COMPLETED, use completionReport as the main remark
+          let remarkMessage = dto.messageToReporter || dto.notes;
+          
+          if (dto.status === 'COMPLETED' && dto.completionReport) {
+            remarkMessage = `รายงานการซ่อม: ${dto.completionReport}`;
+          }
 
           // Get ticket with attachments for image
           const ticketWithAttachments = await this.prisma.repairTicket.findUnique({
