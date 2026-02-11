@@ -187,19 +187,8 @@ export class LineOAWebhookService {
     this.logger.log(`Sending repair form URL to ${lineUserId}: ${repairFormUrl}`);
 
     const message: line.Message = {
-      type: 'template',
-      altText: '🔧 แจ้งซ่อมออนไลน์ - คลิกเพื่อเปิดฟอร์ม',
-      template: {
-        type: 'buttons',
-        text: '🔧 แจ้งซ่อมออนไลน์\n\nคลิกปุ่มด้านล่างเพื่อเปิดฟอร์มแจ้งซ่อม\nคุณจะได้รับแจ้งเตือนสถานะผ่าน LINE อัตโนมัติ',
-        actions: [
-          {
-            type: 'uri',
-            label: 'เปิดฟอร์มแจ้งซ่อม',
-            uri: repairFormUrl,
-          },
-        ],
-      },
+      type: 'text',
+      text: `🔧 แจ้งซ่อมกดลิ้งนี้\n${repairFormUrl}`,
     };
 
     await client.pushMessage(lineUserId, message);
