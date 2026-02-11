@@ -352,6 +352,41 @@ export class RepairsService {
         }
       }
 
+      // Upload completion files FIRST (collect URLs for history)
+      const uploadedImageUrls: string[] = [];
+      if (files && files.length > 0) {
+        for (const file of files) {
+          try {
+            if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+              this.logger.warn(`Rejected file with invalid MIME type: ${file.mimetype}`);
+              continue;
+            }
+            if (file.size > MAX_FILE_SIZE) {
+              this.logger.warn(`Rejected file exceeding size limit: ${file.size} bytes`);
+              continue;
+            }
+            const sanitizedName = this.sanitizeFilename(file.originalname);
+            const result = await this.cloudinaryService.uploadFile(
+              file.buffer,
+              sanitizedName,
+              'repairs/completion',
+            );
+            await this.prisma.repairAttachment.create({
+              data: {
+                repairTicketId: id,
+                filename: sanitizedName,
+                fileUrl: result.url,
+                fileSize: file.size,
+                mimeType: file.mimetype,
+              },
+            });
+            uploadedImageUrls.push(result.url);
+          } catch (error) {
+            this.logger.error(`Failed to upload completion file ${file.originalname}:`, error);
+          }
+        }
+      }
+
       // Log Status Changes (Accept/Reject)
       if (dto.status !== undefined && originalTicket && dto.status !== originalTicket.status) {
          let action = 'STATUS_CHANGE';
@@ -374,7 +409,17 @@ export class RepairsService {
              note = 'รับงาน';
          } else if (dto.status === 'PENDING' && originalTicket.status === 'ASSIGNED') {
              action = 'REJECT';
-             note = 'ปฏิเสธงาน'; // Or get from dto.note if available?
+             note = 'ปฏิเสธงาน';
+         }
+
+         // Append completion report and images for COMPLETED status
+         if (dto.status === 'COMPLETED') {
+           if (dto.completionReport) {
+             note += `\nรายงาน: ${dto.completionReport}`;
+           }
+           if (uploadedImageUrls.length > 0) {
+             note += `\n[IMAGES:${uploadedImageUrls.join(',')}]`;
+           }
          }
 
           await this.prisma.repairAssignmentHistory.create({
@@ -423,39 +468,6 @@ export class RepairsService {
           assignees: { include: { user: true } },
         },
       });
-
-      // Upload completion files (if any)
-      if (files && files.length > 0) {
-        for (const file of files) {
-          try {
-            if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-              this.logger.warn(`Rejected file with invalid MIME type: ${file.mimetype}`);
-              continue;
-            }
-            if (file.size > MAX_FILE_SIZE) {
-              this.logger.warn(`Rejected file exceeding size limit: ${file.size} bytes`);
-              continue;
-            }
-            const sanitizedName = this.sanitizeFilename(file.originalname);
-            const result = await this.cloudinaryService.uploadFile(
-              file.buffer,
-              sanitizedName,
-              'repairs/completion',
-            );
-            await this.prisma.repairAttachment.create({
-              data: {
-                repairTicketId: id,
-                filename: sanitizedName,
-                fileUrl: result.url,
-                fileSize: file.size,
-                mimeType: file.mimetype,
-              },
-            });
-          } catch (error) {
-            this.logger.error(`Failed to upload completion file ${file.originalname}:`, error);
-          }
-        }
-      }
 
       // LINE Notifications
       try {
