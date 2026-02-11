@@ -30,4 +30,8 @@ export class UpdateRepairTicketDto extends PartialType(CreateRepairTicketDto) {
 
   @IsOptional()
   completedAt?: Date;
+
+  @IsOptional()
+  @IsString()
+  completionReport?: string;
 }

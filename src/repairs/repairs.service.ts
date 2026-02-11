@@ -269,7 +269,7 @@ export class RepairsService {
     return ticket;
   }
 
-  async update(id: number, dto: any, updatedById: number) {
+  async update(id: number, dto: any, updatedById: number, files?: Express.Multer.File[]) {
     // Get original ticket to compare for notifications
     const originalTicket = await this.prisma.repairTicket.findUnique({
       where: { id },
@@ -291,6 +291,7 @@ export class RepairsService {
     if (dto.status !== undefined) updateData.status = dto.status;
     if (dto.notes !== undefined) updateData.notes = dto.notes;
     if (dto.messageToReporter !== undefined) updateData.messageToReporter = dto.messageToReporter;
+    if (dto.completionReport !== undefined) updateData.notes = dto.completionReport; // Store completion report in notes
     // Dates need careful handling
     if (dto.scheduledAt) updateData.scheduledAt = new Date(dto.scheduledAt);
     if (dto.completedAt) updateData.completedAt = new Date(dto.completedAt);
@@ -422,6 +423,39 @@ export class RepairsService {
           assignees: { include: { user: true } },
         },
       });
+
+      // Upload completion files (if any)
+      if (files && files.length > 0) {
+        for (const file of files) {
+          try {
+            if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+              this.logger.warn(`Rejected file with invalid MIME type: ${file.mimetype}`);
+              continue;
+            }
+            if (file.size > MAX_FILE_SIZE) {
+              this.logger.warn(`Rejected file exceeding size limit: ${file.size} bytes`);
+              continue;
+            }
+            const sanitizedName = this.sanitizeFilename(file.originalname);
+            const result = await this.cloudinaryService.uploadFile(
+              file.buffer,
+              sanitizedName,
+              'repairs/completion',
+            );
+            await this.prisma.repairAttachment.create({
+              data: {
+                repairTicketId: id,
+                filename: sanitizedName,
+                fileUrl: result.url,
+                fileSize: file.size,
+                mimeType: file.mimetype,
+              },
+            });
+          } catch (error) {
+            this.logger.error(`Failed to upload completion file ${file.originalname}:`, error);
+          }
+        }
+      }
 
       // LINE Notifications
       try {

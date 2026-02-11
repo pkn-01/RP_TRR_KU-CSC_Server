@@ -272,10 +272,12 @@ export class RepairsController {
 
   @Put(':id')
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FilesInterceptor('files', 5))
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRepairTicketDto,
     @Req() req: any,
+    @UploadedFiles() files?: Express.Multer.File[],
   ) {
     try {
       // LINE notification is already handled in repairsService.update()
@@ -284,6 +286,7 @@ export class RepairsController {
         id,
         dto,
         req.user.id,
+        files,
       );
 
       return updated;
