@@ -503,7 +503,12 @@ export class RepairsService {
           // Get ticket with attachments for image
           const ticketWithAttachments = await this.prisma.repairTicket.findUnique({
             where: { id: ticket.id },
-            include: { attachments: { take: 1 } },
+            include: { 
+              attachments: { 
+                orderBy: { id: 'asc' },
+                take: 1 
+              } 
+            },
           });
           
           // Consolidated Notification Logic: Send only ONE notification to reporter
