@@ -371,25 +371,32 @@ export class DataManagementService {
 
   async clearData(types: DataType[]): Promise<{ success: boolean; deleted: Record<string, number> }> {
     const deleted: Record<string, number> = {};
+    const publicIdsToDelete: string[] = [];
 
+    // 1. First, collect all usage of Cloudinary files to be deleted
+    // We do this BEFORE the transaction to avoid long-running queries inside it if possible, 
+    // or at least we don't call external APIs inside the transaction.
+    for (const type of types) {
+      if (type === 'repairs') {
+        const repairAttachments = await this.prisma.repairAttachment.findMany({ select: { fileUrl: true } });
+        for (const att of repairAttachments) {
+          const publicId = this.cloudinary.extractPublicIdFromUrl(att.fileUrl);
+          if (publicId) publicIdsToDelete.push(publicId);
+        }
+      } else if (type === 'tickets') {
+        const attachments = await this.prisma.attachment.findMany({ select: { fileUrl: true } });
+        for (const att of attachments) {
+          const publicId = this.cloudinary.extractPublicIdFromUrl(att.fileUrl);
+          if (publicId) publicIdsToDelete.push(publicId);
+        }
+      }
+    }
+
+    // 2. Perform Database Deletions in a Transaction
     await this.prisma.$transaction(async (tx) => {
       for (const type of types) {
         switch (type) {
           case 'repairs':
-            // 1. Find all attachments to delete from Cloudinary
-            const repairAttachments = await tx.repairAttachment.findMany();
-            
-            // Delete files from Cloudinary (async, don't block transaction too long if possible, or await)
-            for (const att of repairAttachments) {
-              const publicId = this.cloudinary.extractPublicIdFromUrl(att.fileUrl);
-              if (publicId) {
-                // We use catch here to ensure one failure doesn't stop the whole process
-                await this.cloudinary.deleteFile(publicId).catch(err => 
-                  this.logger.error(`Failed to delete Cloudinary file ${publicId}:`, err)
-                );
-              }
-            }
-            
             // Delete in order due to relations
             const repairLogs = await tx.repairTicketLog.deleteMany();
             const repairAssignees = await tx.repairTicketAssignee.deleteMany();
@@ -402,19 +409,6 @@ export class DataManagementService {
             break;
 
           case 'tickets':
-            // 1. Find all attachments to delete from Cloudinary
-            const attachments = await tx.attachment.findMany();
-            
-             // Delete files from Cloudinary
-            for (const att of attachments) {
-              const publicId = this.cloudinary.extractPublicIdFromUrl(att.fileUrl);
-              if (publicId) {
-                await this.cloudinary.deleteFile(publicId).catch(err => 
-                  this.logger.error(`Failed to delete Cloudinary file ${publicId}:`, err)
-                );
-              }
-            }
-
             const ticketLogs = await tx.ticketLog.deleteMany();
             const attachmentsDeleted = await tx.attachment.deleteMany();
             const tickets = await tx.ticket.deleteMany();
@@ -447,6 +441,21 @@ export class DataManagementService {
         }
       }
     });
+
+    // 3. Delete files from Cloudinary AFTER successful DB transaction
+    // Run in background or await (user waits for cleanup)
+    // We use Promise.allSettled to ensure all deletions are attempted
+    if (publicIdsToDelete.length > 0) {
+      this.logger.log(`Deleting ${publicIdsToDelete.length} files from Cloudinary...`);
+      const results = await Promise.allSettled(
+        publicIdsToDelete.map(id => this.cloudinary.deleteFile(id))
+      );
+      
+      const failed = results.filter(r => r.status === 'rejected');
+      if (failed.length > 0) {
+        this.logger.error(`Failed to delete ${failed.length} files from Cloudinary`);
+      }
+    }
 
     this.logger.warn(`Data cleared by admin: ${JSON.stringify(deleted)}`);
     return { success: true, deleted };
