@@ -289,7 +289,7 @@ export class LineOANotificationService {
             cornerRadius: 'xl',
             paddingAll: '6px', paddingStart: '12px', paddingEnd: '12px',
             contents: [
-              { type: 'text', text: `${statusConfig.icon} ${statusConfig.text}`, color: '#FFFFFF', size: 'xs', weight: 'bold' },
+              { type: 'text', text: statusConfig.text, color: '#FFFFFF', size: 'xs', weight: 'bold' },
             ],
           },
           {
@@ -320,7 +320,7 @@ export class LineOANotificationService {
         margin: 'lg',
         spacing: 'xs',
         contents: [
-          { type: 'text', text: '📋 ปัญหาที่แจ้ง', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+          { type: 'text', text: 'ปัญหาที่แจ้ง', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
           { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: COLORS.VALUE, wrap: true },
         ],
       },
@@ -335,7 +335,7 @@ export class LineOANotificationService {
         cornerRadius: 'md',
         margin: 'md',
         contents: [
-          { type: 'text', text: '📝 รายละเอียด', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+          { type: 'text', text: 'รายละเอียด', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
           { type: 'text', text: payload.description, size: 'sm', color: COLORS.VALUE, wrap: true, margin: 'xs' },
         ],
       });
@@ -352,7 +352,7 @@ export class LineOANotificationService {
         borderColor: '#FDBA7440',
         borderWidth: '1px',
         contents: [
-          { type: 'text', text: '💬 หมายเหตุจากเจ้าหน้าที่', size: 'xxs', color: '#92400E', weight: 'bold' },
+          { type: 'text', text: 'หมายเหตุจากเจ้าหน้าที่', size: 'xxs', color: '#92400E', weight: 'bold' },
           { type: 'text', text: payload.remark, size: 'sm', color: '#78350F', wrap: true, margin: 'xs' },
         ],
       });
@@ -386,7 +386,7 @@ export class LineOANotificationService {
         backgroundColor: COLORS.FOOTER_BG,
         justifyContent: 'space-between',
         contents: [
-          { type: 'text', text: `🕐 แจ้งเมื่อ ${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
+          { type: 'text', text: `แจ้งเมื่อ ${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
           { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: COLORS.SUBTLE, align: 'end' },
         ],
       },
@@ -458,7 +458,7 @@ export class LineOANotificationService {
         type: 'box', layout: 'vertical',
         spacing: 'xs',
         contents: [
-          { type: 'text', text: '📋 ปัญหาที่แจ้ง', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+          { type: 'text', text: 'ปัญหาที่แจ้ง', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
           { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: COLORS.VALUE, wrap: true },
         ],
       },
@@ -471,9 +471,9 @@ export class LineOANotificationService {
         margin: 'lg',
         spacing: 'sm',
         contents: [
-          this.createInfoRow('👤', 'ผู้แจ้ง', payload.reporterName, true),
-          this.createInfoRow('🏢', 'แผนก', payload.department),
-          this.createInfoRow('📍', 'สถานที่', payload.location),
+          this.createInfoRow('', 'ผู้แจ้ง', payload.reporterName, true),
+          this.createInfoRow('', 'แผนก', payload.department),
+          this.createInfoRow('', 'สถานที่', payload.location),
         ],
       },
     ];
@@ -487,7 +487,7 @@ export class LineOANotificationService {
         cornerRadius: 'md',
         margin: 'md',
         contents: [
-          { type: 'text', text: '📝 รายละเอียดเพิ่มเติม', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+          { type: 'text', text: 'รายละเอียดเพิ่มเติม', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
           { type: 'text', text: payload.problemDescription, size: 'sm', color: COLORS.VALUE, wrap: true, margin: 'xs' },
         ],
       });
@@ -505,7 +505,7 @@ export class LineOANotificationService {
           {
             type: 'box', layout: 'vertical', flex: 1,
             contents: [
-              { type: 'text', text: '🔔 แจ้งซ่อมใหม่', color: '#FFFFFF', weight: 'bold', size: 'lg' },
+              { type: 'text', text: 'แจ้งซ่อมใหม่', color: '#FFFFFF', weight: 'bold', size: 'lg' },
               { type: 'text', text: payload.ticketCode, color: '#94A3B8', size: 'sm', margin: 'sm' },
             ],
           },
@@ -516,7 +516,7 @@ export class LineOANotificationService {
             paddingAll: '6px', paddingStart: '12px', paddingEnd: '12px',
             justifyContent: 'center', height: '28px',
             contents: [
-              { type: 'text', text: `${urgency.icon} ${urgency.text}`, color: '#FFFFFF', size: 'xxs', weight: 'bold' },
+              { type: 'text', text: urgency.text, color: '#FFFFFF', size: 'xxs', weight: 'bold' },
             ],
           },
         ],
@@ -534,7 +534,7 @@ export class LineOANotificationService {
         backgroundColor: COLORS.FOOTER_BG,
         justifyContent: 'space-between',
         contents: [
-          { type: 'text', text: `🕐 ${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
+          { type: 'text', text: `${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
           { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: COLORS.SUBTLE, align: 'end' },
         ],
       },
@@ -565,7 +565,7 @@ export class LineOANotificationService {
           {
             type: 'box', layout: 'vertical', flex: 1,
             contents: [
-              { type: 'text', text: `🔧 ${actionText}`, color: '#FFFFFF', weight: 'bold', size: 'md' },
+              { type: 'text', text: `${actionText}`, color: '#FFFFFF', weight: 'bold', size: 'md' },
               { type: 'text', text: payload.ticketCode, color: '#94A3B8', size: 'sm', margin: 'sm' },
             ],
           },
@@ -576,7 +576,7 @@ export class LineOANotificationService {
             paddingAll: '6px', paddingStart: '12px', paddingEnd: '12px',
             justifyContent: 'center', height: '28px',
             contents: [
-              { type: 'text', text: `${urgency.icon} ${urgency.text}`, color: '#FFFFFF', size: 'xxs', weight: 'bold' },
+              { type: 'text', text: urgency.text, color: '#FFFFFF', size: 'xxs', weight: 'bold' },
             ],
           },
         ],
@@ -592,7 +592,7 @@ export class LineOANotificationService {
             type: 'box', layout: 'vertical',
             spacing: 'xs',
             contents: [
-              { type: 'text', text: '📋 รายละเอียดงาน', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+              { type: 'text', text: 'รายละเอียดงาน', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
               { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: COLORS.VALUE, wrap: true },
             ],
           },
@@ -606,8 +606,8 @@ export class LineOANotificationService {
             margin: 'lg',
             spacing: 'sm',
             contents: [
-              this.createInfoRow('👤', 'ผู้แจ้ง', payload.reporterName, true),
-              this.createInfoRow('⚡', 'ความเร่งด่วน', urgency.text),
+              this.createInfoRow('', 'ผู้แจ้ง', payload.reporterName, true),
+              this.createInfoRow('', 'ความเร่งด่วน', urgency.text),
             ],
           },
         ],
@@ -618,7 +618,7 @@ export class LineOANotificationService {
         backgroundColor: COLORS.FOOTER_BG,
         justifyContent: 'space-between',
         contents: [
-          { type: 'text', text: `🕐 ${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
+          { type: 'text', text: `${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
           { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: COLORS.SUBTLE, align: 'end' },
         ],
       },
@@ -651,7 +651,7 @@ export class LineOANotificationService {
           cornerRadius: 'xl',
           paddingAll: '6px', paddingStart: '14px', paddingEnd: '14px',
           contents: [
-            { type: 'text', text: `${config.icon} ${config.text}`, color: '#FFFFFF', size: 'sm', weight: 'bold' },
+            { type: 'text', text: config.text, color: '#FFFFFF', size: 'sm', weight: 'bold' },
           ],
         },
       ],
@@ -676,7 +676,7 @@ export class LineOANotificationService {
         margin: 'lg',
         spacing: 'xs',
         contents: [
-          { type: 'text', text: '📋 ปัญหาที่แจ้ง', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+          { type: 'text', text: 'ปัญหาที่แจ้ง', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
           { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: COLORS.VALUE, wrap: true },
         ],
       });
@@ -699,7 +699,7 @@ export class LineOANotificationService {
           cornerRadius: 'xxl',
           justifyContent: 'center', alignItems: 'center',
           contents: [
-            { type: 'text', text: hasTechnician ? '👨‍🔧' : '⏳', size: 'lg' },
+            { type: 'text', text: hasTechnician ? '' : '', size: 'lg' },
           ],
         },
         {
@@ -729,7 +729,7 @@ export class LineOANotificationService {
         borderColor: '#FDBA7440',
         borderWidth: '1px',
         contents: [
-          { type: 'text', text: '💬 หมายเหตุ', size: 'xxs', color: '#92400E', weight: 'bold' },
+          { type: 'text', text: 'หมายเหตุ', size: 'xxs', color: '#92400E', weight: 'bold' },
           { type: 'text', text: payload.remark, size: 'sm', color: '#78350F', wrap: true, margin: 'xs' },
         ],
       });
@@ -751,7 +751,7 @@ export class LineOANotificationService {
         backgroundColor: COLORS.FOOTER_BG,
         justifyContent: 'space-between',
         contents: [
-          { type: 'text', text: `🕐 อัปเดต ${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
+          { type: 'text', text: `อัปเดต ${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
           { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: COLORS.SUBTLE, align: 'end' },
         ],
       },
@@ -774,23 +774,23 @@ export class LineOANotificationService {
     };
   }
 
-  private getUrgencyConfig(level: string): { color: string; text: string; icon: string } {
+  private getUrgencyConfig(level: string): { color: string; text: string } {
     return ({
-      CRITICAL: { color: COLORS.CRITICAL, text: 'ด่วนที่สุด', icon: '🔴' },
-      URGENT: { color: COLORS.URGENT, text: 'ด่วน', icon: '🟠' },
-      NORMAL: { color: COLORS.NORMAL, text: 'ปกติ', icon: '🟢' },
-    }[level] || { color: COLORS.NORMAL, text: 'ปกติ', icon: '🟢' });
+      CRITICAL: { color: COLORS.CRITICAL, text: 'ด่วนที่สุด' },
+      URGENT: { color: COLORS.URGENT, text: 'ด่วน' },
+      NORMAL: { color: COLORS.NORMAL, text: 'ปกติ' },
+    }[level] || { color: COLORS.NORMAL, text: 'ปกติ' });
   }
 
-  private getStatusConfig(status: string): { color: string; text: string; icon: string } {
+  private getStatusConfig(status: string): { color: string; text: string } {
     return ({
-      PENDING: { color: COLORS.WARNING, text: 'รอดำเนินการ', icon: '⏳' },
-      ASSIGNED: { color: COLORS.INFO, text: 'มอบหมายแล้ว', icon: '📌' },
-      IN_PROGRESS: { color: COLORS.INFO, text: 'กำลังดำเนินการ', icon: '🔧' },
-      COMPLETED: { color: COLORS.SUCCESS, text: 'เสร็จสิ้น', icon: '✅' },
-      WAITING_PARTS: { color: COLORS.WARNING, text: 'รออะไหล่', icon: '📦' },
-      WAITING_USER: { color: COLORS.WARNING, text: 'รอข้อมูลจากผู้แจ้ง', icon: '📩' },
-      CANCELLED: { color: COLORS.SECONDARY, text: 'ยกเลิก', icon: '❌' },
-    }[status] || { color: COLORS.PRIMARY, text: status, icon: '📄' });
+      PENDING: { color: COLORS.WARNING, text: 'รอดำเนินการ' },
+      ASSIGNED: { color: COLORS.INFO, text: 'มอบหมายแล้ว' },
+      IN_PROGRESS: { color: COLORS.INFO, text: 'กำลังดำเนินการ' },
+      COMPLETED: { color: COLORS.SUCCESS, text: 'เสร็จสิ้น' },
+      WAITING_PARTS: { color: COLORS.WARNING, text: 'รออะไหล่' },
+      WAITING_USER: { color: COLORS.WARNING, text: 'รอข้อมูลจากผู้แจ้ง' },
+      CANCELLED: { color: COLORS.SECONDARY, text: 'ยกเลิก' },
+    }[status] || { color: COLORS.PRIMARY, text: status });
   }
 }
