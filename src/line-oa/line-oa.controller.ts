@@ -24,7 +24,7 @@ export class LineOAController {
     private readonly webhookService: LineOAWebhookService,
   ) {}
 
-  // ... (keep existing code)
+  // ===================== Webhook =====================
 
   /**
    * LINE Webhook Endpoint
@@ -43,6 +43,47 @@ export class LineOAController {
       signature || '',
       rawBody,
     );
+  }
+
+  // ===================== Linking =====================
+
+  /**
+   * ดึงสถานะการเชื่อมต่อ LINE
+   */
+  @Get('linking/status')
+  async getLinkingStatus(@Query('userId') userId: string) {
+    return await this.linkingService.getLinkingStatus(parseInt(userId));
+  }
+
+  /**
+   * เริ่มต้นกระบวนการเชื่อมต่อบัญชี LINE
+   */
+  @Post('linking/initiate')
+  async initiateLinking(@Body() body: { userId: number }) {
+    return await this.linkingService.initiateLinking(body.userId);
+  }
+
+  /**
+   * ยืนยันการเชื่อมต่อ LINE
+   */
+  @Post('linking/verify')
+  async verifyLink(
+    @Body() body: { userId: number; lineUserId: string; verificationToken: string; force?: boolean },
+  ) {
+    return await this.linkingService.verifyLink(
+      body.userId,
+      body.lineUserId,
+      body.verificationToken,
+      body.force || false,
+    );
+  }
+
+  /**
+   * ยกเลิกการเชื่อมต่อ LINE
+   */
+  @Delete('linking/unlink')
+  async unlinkAccount(@Query('userId') userId: string) {
+    return await this.linkingService.unlinkAccount(parseInt(userId));
   }
 
   // ===================== Notifications =====================
