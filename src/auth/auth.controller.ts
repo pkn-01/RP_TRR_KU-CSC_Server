@@ -24,7 +24,12 @@ export class AuthController {
   @Get('line-auth-url')
   @Public()
   getLineAuthUrl() {
-    return this.authService.getLineAuthUrl();
+    try {
+      return this.authService.getLineAuthUrl();
+    } catch (error) {
+      console.error('Error getting LINE Auth URL:', error);
+      throw new BadRequestException(error.message || 'Failed to generate LINE Auth URL');
+    }
   }
 
   // 🔴 DEBUG: Check what redirect_uri is actually being used on Vercel
