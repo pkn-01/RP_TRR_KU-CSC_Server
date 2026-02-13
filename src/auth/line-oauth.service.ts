@@ -263,16 +263,16 @@ export class LineOAuthService {
    */
 
   private getRedirectUri(): string {
-    const redirectUri = process.env.LINE_REDIRECT_URI;
+    let redirectUri = process.env.LINE_REDIRECT_URI;
 
-    // ✅ CRITICAL: Do NOT use fallback value
-    // redirect_uri MUST be explicitly configured in environment
+    // Fallback if LINE_REDIRECT_URI is not set
+    if (!redirectUri && process.env.FRONTEND_URL) {
+      redirectUri = `${process.env.FRONTEND_URL}/auth/line/callback`;
+    }
+
     if (!redirectUri) {
-      throw new Error(
-        'LINE_REDIRECT_URI is not configured. ' +
-        'Set LINE_REDIRECT_URI in environment variables. ' +
-        'It must match exactly with LINE Console Callback URL.'
-      );
+        // Last resort fallback for local development
+       redirectUri = 'http://localhost:3000/auth/line/callback';
     }
 
     // ✅ Validate redirect_uri protocol
@@ -285,7 +285,7 @@ export class LineOAuthService {
     // ✅ CRITICAL: Return EXACTLY as configured - no normalization!
     // The redirect_uri MUST match byte-for-byte with LINE Console Callback URL.
     // Do NOT add or remove trailing slash - use exactly what's in env.
-    console.log('[LINE Auth] Using redirect_uri exactly as configured:', redirectUri);
+    console.log('[LINE Auth] Using redirect_uri:', redirectUri);
     return redirectUri;
   }
 
