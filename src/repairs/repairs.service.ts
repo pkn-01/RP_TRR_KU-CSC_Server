@@ -498,10 +498,6 @@ export class RepairsService {
           
           if (dto.status === 'COMPLETED' && dto.completionReport) {
             remarkMessage = `รายงานการซ่อม: ${dto.completionReport}`;
-            // Append messageToReporter if also provided during completion
-            if (dto.messageToReporter) {
-              remarkMessage += `\nข้อความจากช่าง: ${dto.messageToReporter}`;
-            }
           }
 
           // Get ticket with attachments for image
