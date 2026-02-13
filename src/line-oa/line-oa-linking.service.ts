@@ -206,7 +206,16 @@ export class LineOALinkingService {
    */
   private generateLinkingUrl(verificationToken: string): string {
     // URL นี้เป็นตัวอย่าง สำหรับการใช้งานจริง ต้องปรับตาม LINE Configuration
-    const baseUrl = process.env.LINE_LOGIN_REDIRECT_URI || 'http://localhost:3000';
+    let baseUrl = process.env.FRONTEND_URL || process.env.LINE_LOGIN_REDIRECT_URI || 'http://localhost:3000';
+    
+    // Remove trailing slash if present
+    baseUrl = baseUrl.replace(/\/$/, '');
+
+    // Check if the URL already includes the callback path
+    if (baseUrl.endsWith('/auth/line/callback')) {
+      return `${baseUrl}?token=${verificationToken}`;
+    }
+
     return `${baseUrl}/auth/line/callback?token=${verificationToken}`;
   }
 
