@@ -212,7 +212,7 @@ export class LineOAWebhookService {
 
     const message: line.Message = {
       type: 'text',
-      text: `🔧 แจ้งซ่อมกดลิ้งนี้\n${repairFormUrl}`,
+      text: `แจ้งซ่อมกดลิ้งนี้\n${repairFormUrl}`,
     };
 
     await client.pushMessage(lineUserId, message);
