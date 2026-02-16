@@ -153,8 +153,13 @@ export class LineOANotificationService {
     technicianId: number,
     payload: {
       ticketCode: string;
+      ticketId?: number;
       problemTitle: string;
+      problemDescription?: string;
       reporterName: string;
+      reporterPhone?: string;
+      department?: string;
+      location?: string;
       urgency: 'CRITICAL' | 'URGENT' | 'NORMAL';
       action: 'ASSIGNED' | 'TRANSFERRED' | 'CLAIMED';
       imageUrl?: string;
@@ -614,9 +619,94 @@ export class LineOANotificationService {
       timeZone: 'Asia/Bangkok',
     }).format(new Date());
 
+    const bodyContents: any[] = [
+      // ── Problem Title ──
+      {
+        type: 'box', layout: 'vertical',
+        spacing: 'xs',
+        contents: [
+          { type: 'text', text: 'ปัญหาที่แจ้ง', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+          { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: COLORS.VALUE, wrap: true },
+        ],
+      },
+      // ── Info Card ──
+      {
+        type: 'box', layout: 'vertical',
+        backgroundColor: COLORS.SECTION_BG,
+        paddingAll: '14px',
+        cornerRadius: 'lg',
+        margin: 'lg',
+        spacing: 'sm',
+        contents: [
+          this.createInfoRow('', 'ผู้แจ้ง', payload.reporterName, true),
+          ...(payload.department ? [this.createInfoRow('', 'แผนก', payload.department)] : []),
+          ...(payload.location ? [this.createInfoRow('', 'สถานที่', payload.location)] : []),
+        ],
+      },
+    ];
+
+    // ── Description ──
+    if (payload.problemDescription) {
+      bodyContents.push({
+        type: 'box', layout: 'vertical',
+        backgroundColor: COLORS.SECTION_BG,
+        paddingAll: '12px',
+        cornerRadius: 'md',
+        margin: 'md',
+        contents: [
+          { type: 'text', text: 'รายละเอียดเพิ่มเติม', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+          { type: 'text', text: payload.problemDescription, size: 'sm', color: COLORS.VALUE, wrap: true, margin: 'xs' },
+        ],
+      });
+    }
+
+    // Build action buttons
+    const frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc.vercel.app';
+    const actionButtons: any[] = [];
+
+    // Phone call button
+    if (payload.reporterPhone) {
+      actionButtons.push({
+        type: 'button',
+        action: {
+          type: 'uri',
+          label: '📞 โทรหาผู้แจ้ง',
+          uri: `tel:${payload.reporterPhone}`,
+        },
+        style: 'primary',
+        color: '#059669',
+        height: 'sm',
+      });
+    }
+
+    // Detail view button
+    if (payload.ticketId) {
+      actionButtons.push({
+        type: 'button',
+        action: {
+          type: 'uri',
+          label: '📋 ดูรายละเอียด',
+          uri: `${frontendUrl}/admin/repairs/${payload.ticketId}`,
+        },
+        style: 'primary',
+        color: '#2563EB',
+        height: 'sm',
+      });
+    }
+
     return {
       type: 'bubble',
       size: 'mega',
+      // Hero image (if reporter attached a photo)
+      ...(payload.imageUrl ? {
+        hero: {
+          type: 'image',
+          url: payload.imageUrl,
+          size: 'full',
+          aspectRatio: '20:13',
+          aspectMode: 'cover',
+        },
+      } : {}),
       header: {
         type: 'box',
         layout: 'horizontal',
@@ -647,40 +737,30 @@ export class LineOANotificationService {
         paddingAll: '20px',
         spacing: 'none',
         backgroundColor: COLORS.CARD_BG,
-        contents: [
-          // ── Problem Title ──
-          {
-            type: 'box', layout: 'vertical',
-            spacing: 'xs',
-            contents: [
-              { type: 'text', text: 'รายละเอียดงาน', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
-              { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: COLORS.VALUE, wrap: true },
-            ],
-          },
-          { type: 'separator', margin: 'lg', color: COLORS.BORDER },
-          // ── Info Card ──
-          {
-            type: 'box', layout: 'vertical',
-            backgroundColor: COLORS.SECTION_BG,
-            paddingAll: '14px',
-            cornerRadius: 'lg',
-            margin: 'lg',
-            spacing: 'sm',
-            contents: [
-              this.createInfoRow('', 'ผู้แจ้ง', payload.reporterName, true),
-              this.createInfoRow('', 'ความเร่งด่วน', urgency.text),
-            ],
-          },
-        ],
+        contents: bodyContents,
       },
       footer: {
-        type: 'box', layout: 'horizontal',
+        type: 'box', layout: 'vertical',
         paddingAll: '14px',
         backgroundColor: COLORS.FOOTER_BG,
-        justifyContent: 'space-between',
+        spacing: 'sm',
         contents: [
-          { type: 'text', text: `${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
-          { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: COLORS.SUBTLE, align: 'end' },
+          // Action buttons row
+          ...(actionButtons.length > 0 ? [{
+            type: 'box', layout: 'horizontal',
+            spacing: 'sm',
+            contents: actionButtons,
+          }] : []),
+          // Date and system label
+          {
+            type: 'box', layout: 'horizontal',
+            justifyContent: 'space-between',
+            margin: actionButtons.length > 0 ? 'md' : 'none',
+            contents: [
+              { type: 'text', text: `${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
+              { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: COLORS.SUBTLE, align: 'end' },
+            ],
+          },
         ],
       },
       styles: {

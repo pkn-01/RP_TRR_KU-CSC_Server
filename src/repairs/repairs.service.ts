@@ -179,27 +179,7 @@ export class RepairsService {
       },
     });
 
-    // 🔔 Notify IT team via LINE when new ticket is created
-    try {
-      const imageUrl = attachmentData.length > 0 ? attachmentData[0].fileUrl : undefined;
-      await this.lineNotificationService.notifyRepairTicketToITTeam({
-        ticketCode: ticket.ticketCode,
-        ticketId: ticket.id,
-        reporterName: dto.reporterName,
-        department: dto.reporterDepartment || 'ไม่ระบุแผนก',
-        problemTitle: dto.problemTitle,
-        problemDescription: dto.problemDescription,
-        location: dto.location,
-        urgency: dto.urgency || 'NORMAL',
-        createdAt: new Date().toISOString(),
-        reporterPhone: dto.reporterPhone,
-        imageUrl,
-      });
-      this.logger.log(`LINE notification sent for new ticket to IT Team: ${ticket.ticketCode}`);
-    } catch (error) {
-      // Don't fail the ticket creation if notification fails
-      this.logger.error('Failed to send LINE notification to IT Team:', error);
-    }
+    // Note: IT team notification removed - IT staff will be notified only when admin assigns them to the ticket
 
     // 🔔 Notify REPORTER via LINE when new ticket is created
     try {
@@ -480,12 +460,25 @@ export class RepairsService {
           const newAssigneeIds = dto.assigneeIds.filter((id: number) => !previousAssigneeIds.includes(id));
           
           for (const techId of newAssigneeIds) {
+            // Get first attachment image for the notification
+            const ticketWithAttachments = await this.prisma.repairTicket.findUnique({
+              where: { id: ticket.id },
+              include: { attachments: { orderBy: { id: 'asc' }, take: 1 } },
+            });
+            const imageUrl = ticketWithAttachments?.attachments?.[0]?.fileUrl;
+
             await this.lineNotificationService.notifyTechnicianTaskAssignment(techId, {
               ticketCode: ticket.ticketCode,
+              ticketId: ticket.id,
               problemTitle: ticket.problemTitle,
+              problemDescription: ticket.problemDescription || undefined,
               reporterName: ticket.reporterName,
+              reporterPhone: ticket.reporterPhone || undefined,
+              department: ticket.reporterDepartment || 'ไม่ระบุแผนก',
+              location: ticket.location,
               urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',
               action: 'ASSIGNED',
+              imageUrl,
             });
             this.logger.log(`Notified technician ${techId} for assignment: ${ticket.ticketCode}`);
           }
