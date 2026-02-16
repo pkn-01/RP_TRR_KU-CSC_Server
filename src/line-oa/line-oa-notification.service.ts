@@ -527,7 +527,7 @@ export class LineOANotificationService {
         action: {
           type: 'uri',
           label: '📋 ดูรายละเอียด',
-          uri: `${frontendUrl}/admin/repairs/${payload.ticketId}`,
+          uri: `${frontendUrl}/login/admin?redirect=/admin/repairs/${payload.ticketId}`,
         },
         style: 'primary',
         color: '#2563EB',
@@ -686,7 +686,7 @@ export class LineOANotificationService {
         action: {
           type: 'uri',
           label: '📋 ดูรายละเอียด',
-          uri: `${frontendUrl}/admin/repairs/${payload.ticketId}`,
+          uri: `${frontendUrl}/login/admin?redirect=/admin/repairs/${payload.ticketId}`,
         },
         style: 'primary',
         color: '#2563EB',
