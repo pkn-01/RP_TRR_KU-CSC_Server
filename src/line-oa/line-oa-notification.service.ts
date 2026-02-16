@@ -503,7 +503,12 @@ export class LineOANotificationService {
     }
 
     // Build action buttons
-    const frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc.vercel.app';
+    let frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc.vercel.app';
+    try {
+      frontendUrl = new URL(frontendUrl).origin;
+    } catch (e) {
+      // invalid URL, keep as is or log error
+    }
     const actionButtons: any[] = [];
 
     // Phone call button (only if reporterPhone is available)
@@ -664,7 +669,12 @@ export class LineOANotificationService {
     }
 
     // Build action buttons
-    const frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc.vercel.app';
+    let frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc.vercel.app';
+    try {
+      frontendUrl = new URL(frontendUrl).origin;
+    } catch (e) {
+      // invalid URL, keep as is or log error
+    }
     const actionButtons: any[] = [];
 
     // Phone call button
@@ -673,7 +683,7 @@ export class LineOANotificationService {
         type: 'button',
         action: {
           type: 'uri',
-          label: '📞 โทรหาผู้แจ้ง',
+          label: 'โทรหาผู้แจ้ง',
           uri: `tel:${payload.reporterPhone}`,
         },
         style: 'primary',
@@ -688,7 +698,7 @@ export class LineOANotificationService {
         type: 'button',
         action: {
           type: 'uri',
-          label: '📋 ดูรายละเอียด',
+          label: 'จัดการ',
           uri: `${frontendUrl}/login/admin?redirect=/admin/repairs/${payload.ticketId}`,
         },
         style: 'primary',
