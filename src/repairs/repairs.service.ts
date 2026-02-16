@@ -181,6 +181,7 @@ export class RepairsService {
 
     // 🔔 Notify IT team via LINE when new ticket is created
     try {
+      const imageUrl = attachmentData.length > 0 ? attachmentData[0].fileUrl : undefined;
       await this.lineNotificationService.notifyRepairTicketToITTeam({
         ticketCode: ticket.ticketCode,
         ticketId: ticket.id,
@@ -192,6 +193,7 @@ export class RepairsService {
         urgency: dto.urgency || 'NORMAL',
         createdAt: new Date().toISOString(),
         reporterPhone: dto.reporterPhone,
+        imageUrl,
       });
       this.logger.log(`LINE notification sent for new ticket to IT Team: ${ticket.ticketCode}`);
     } catch (error) {

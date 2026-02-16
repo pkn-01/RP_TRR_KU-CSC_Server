@@ -54,6 +54,7 @@ export interface RepairTicketNotificationPayload {
   urgency: 'CRITICAL' | 'URGENT' | 'NORMAL';
   createdAt: string;
   reporterPhone?: string;
+  imageUrl?: string;
 }
 
 export interface RepairStatusUpdatePayload {
@@ -532,6 +533,16 @@ export class LineOANotificationService {
     return {
       type: 'bubble',
       size: 'mega',
+      // Hero image (if reporter attached a photo)
+      ...(payload.imageUrl ? {
+        hero: {
+          type: 'image',
+          url: payload.imageUrl,
+          size: 'full',
+          aspectRatio: '20:13',
+          aspectMode: 'cover',
+        },
+      } : {}),
       header: {
         type: 'box',
         layout: 'horizontal',
