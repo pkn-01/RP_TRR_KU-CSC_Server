@@ -511,7 +511,7 @@ export class LineOANotificationService {
         type: 'button',
         action: {
           type: 'uri',
-          label: '📞 โทรหาผู้แจ้ง',
+          label: 'โทรหาผู้แจ้ง',
           uri: `tel:${payload.reporterPhone}`,
         },
         style: 'primary',
@@ -526,7 +526,7 @@ export class LineOANotificationService {
         type: 'button',
         action: {
           type: 'uri',
-          label: '📋 ดูรายละเอียด',
+          label: 'จัดการ',
           uri: `${frontendUrl}/login/admin?redirect=/admin/repairs/${payload.ticketId}`,
         },
         style: 'primary',
