@@ -699,7 +699,7 @@ export class LineOANotificationService {
         action: {
           type: 'uri',
           label: 'จัดการ',
-          uri: `${frontendUrl}/login/admin?ticketId=${payload.ticketId}`,
+          uri: `${frontendUrl}/login/it?ticketId=${payload.ticketId}`,
         },
         style: 'primary',
         color: '#2563EB',
