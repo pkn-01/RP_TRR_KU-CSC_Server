@@ -32,10 +32,10 @@ export class LineOAWebhookService {
    * ตรวจสอบและจัดการ LINE Webhook Event
    */
   async handleWebhook(body: any, signature: string, rawBody?: Buffer) {
-    this.logger.log(`=== Webhook received === Events: ${body.events?.length || 0}, Signature: ${signature ? 'present' : 'missing'}`);
+    this.logger.debug(`=== Webhook received === Events: ${body.events?.length || 0}, Signature: ${signature ? 'present' : 'missing'}`);
     if (body.events && body.events.length > 0) {
       body.events.forEach((e: any, i: number) => {
-        this.logger.log(`  Event[${i}]: type=${e.type}, replyToken=${e.replyToken ? 'present' : 'missing'}, source=${JSON.stringify(e.source)}`);
+        this.logger.debug(`  Event[${i}]: type=${e.type}, replyToken=${e.replyToken ? 'present' : 'missing'}, source=${JSON.stringify(e.source)}`);
       });
     }
 
@@ -53,9 +53,9 @@ export class LineOAWebhookService {
       
       this.logger.warn('WARNING: Signature verification failed! Rejecting request.');
       throw new ForbiddenException('Invalid signature');
-    } else {
-      this.logger.log('✅ Signature verified successfully');
     }
+    
+    this.logger.debug('✅ Signature verified successfully');
 
     // จัดการ events
     if (body.events && Array.isArray(body.events)) {
@@ -64,7 +64,7 @@ export class LineOAWebhookService {
       }
     }
 
-    return { message: 'Webhook processed (signature check skipped for debug)' };
+    return { message: 'Webhook processed' };
   }
 
   /**
