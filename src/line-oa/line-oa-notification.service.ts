@@ -45,6 +45,7 @@ export interface LineNotificationPayload {
 
 export interface RepairTicketNotificationPayload {
   ticketCode: string;
+  ticketId?: number;
   reporterName: string;
   department: string;
   problemTitle: string;
@@ -52,6 +53,7 @@ export interface RepairTicketNotificationPayload {
   location: string;
   urgency: 'CRITICAL' | 'URGENT' | 'NORMAL';
   createdAt: string;
+  reporterPhone?: string;
 }
 
 export interface RepairStatusUpdatePayload {
@@ -493,6 +495,40 @@ export class LineOANotificationService {
       });
     }
 
+    // Build action buttons
+    const frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc.vercel.app';
+    const actionButtons: any[] = [];
+
+    // Phone call button (only if reporterPhone is available)
+    if (payload.reporterPhone) {
+      actionButtons.push({
+        type: 'button',
+        action: {
+          type: 'uri',
+          label: '📞 โทรหาผู้แจ้ง',
+          uri: `tel:${payload.reporterPhone}`,
+        },
+        style: 'primary',
+        color: '#059669',
+        height: 'sm',
+      });
+    }
+
+    // Detail view button
+    if (payload.ticketId) {
+      actionButtons.push({
+        type: 'button',
+        action: {
+          type: 'uri',
+          label: '📋 ดูรายละเอียด',
+          uri: `${frontendUrl}/admin/repairs/${payload.ticketId}`,
+        },
+        style: 'primary',
+        color: '#2563EB',
+        height: 'sm',
+      });
+    }
+
     return {
       type: 'bubble',
       size: 'mega',
@@ -529,13 +565,27 @@ export class LineOANotificationService {
         contents: bodyContents,
       },
       footer: {
-        type: 'box', layout: 'horizontal',
+        type: 'box', layout: 'vertical',
         paddingAll: '14px',
         backgroundColor: COLORS.FOOTER_BG,
-        justifyContent: 'space-between',
+        spacing: 'sm',
         contents: [
-          { type: 'text', text: `${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
-          { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: COLORS.SUBTLE, align: 'end' },
+          // Action buttons row
+          ...(actionButtons.length > 0 ? [{
+            type: 'box', layout: 'horizontal',
+            spacing: 'sm',
+            contents: actionButtons,
+          }] : []),
+          // Date and system label
+          {
+            type: 'box', layout: 'horizontal',
+            justifyContent: 'space-between',
+            margin: actionButtons.length > 0 ? 'md' : 'none',
+            contents: [
+              { type: 'text', text: `${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
+              { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: COLORS.SUBTLE, align: 'end' },
+            ],
+          },
         ],
       },
       styles: {

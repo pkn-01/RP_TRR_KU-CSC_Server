@@ -183,6 +183,7 @@ export class RepairsService {
     try {
       await this.lineNotificationService.notifyRepairTicketToITTeam({
         ticketCode: ticket.ticketCode,
+        ticketId: ticket.id,
         reporterName: dto.reporterName,
         department: dto.reporterDepartment || 'ไม่ระบุแผนก',
         problemTitle: dto.problemTitle,
@@ -190,6 +191,7 @@ export class RepairsService {
         location: dto.location,
         urgency: dto.urgency || 'NORMAL',
         createdAt: new Date().toISOString(),
+        reporterPhone: dto.reporterPhone,
       });
       this.logger.log(`LINE notification sent for new ticket to IT Team: ${ticket.ticketCode}`);
     } catch (error) {
