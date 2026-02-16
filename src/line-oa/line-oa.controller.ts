@@ -107,6 +107,7 @@ export class LineOAController {
   /**
    * ตรวจสอบสถานะการทำงาน
    */
+  @Public()
   @Get('health')
   async healthCheck() {
     return {

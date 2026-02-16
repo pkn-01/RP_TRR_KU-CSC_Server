@@ -8,7 +8,7 @@ import * as line from '@line/bot-sdk';
 @Injectable()
 export class LineOAWebhookService {
   private readonly logger = new Logger(LineOAWebhookService.name);
-  private readonly channelSecret = process.env.LINE_CHANNEL_SECRET || 'test-secret';
+  private readonly channelSecret = process.env.LINE_CHANNEL_SECRET;
   private readonly channelAccessToken = process.env.LINE_ACCESS_TOKEN || '';
   private readonly liffId = process.env.LINE_LIFF_ID || '';
 
@@ -16,12 +16,29 @@ export class LineOAWebhookService {
     private readonly prisma: PrismaService,
     private readonly linkingService: LineOALinkingService,
     private readonly lineOAService: LineOAService,
-  ) {}
+  ) {
+    // Startup diagnostic: check if LINE credentials are loaded
+    this.logger.log(`=== LINE Webhook Service Initialized ===`);
+    this.logger.log(`LINE_ACCESS_TOKEN: ${this.channelAccessToken ? `SET (${this.channelAccessToken.substring(0, 10)}...)` : '❌ MISSING'}`);
+    this.logger.log(`LINE_CHANNEL_SECRET: ${this.channelSecret ? `SET (${this.channelSecret.substring(0, 6)}...)` : '❌ MISSING'}`);
+    this.logger.log(`LINE_LIFF_ID: ${this.liffId ? `SET (${this.liffId})` : '❌ MISSING'}`);
+
+    if (!this.channelSecret) {
+      this.logger.error('LINE_CHANNEL_SECRET is missing! Webhook signature verification will fail.');
+    }
+  }
 
   /**
    * ตรวจสอบและจัดการ LINE Webhook Event
    */
   async handleWebhook(body: any, signature: string, rawBody?: Buffer) {
+    this.logger.log(`=== Webhook received === Events: ${body.events?.length || 0}, Signature: ${signature ? 'present' : 'missing'}`);
+    if (body.events && body.events.length > 0) {
+      body.events.forEach((e: any, i: number) => {
+        this.logger.log(`  Event[${i}]: type=${e.type}, replyToken=${e.replyToken ? 'present' : 'missing'}, source=${JSON.stringify(e.source)}`);
+      });
+    }
+
     // If rawBody is available (from NestJS rawBody: true), use it for signature verification
     // Otherwise fallback to JSON.stringify (which might fail verification due to formatting)
     const bodyBuffer = rawBody || Buffer.from(JSON.stringify(body), 'utf-8');
@@ -33,9 +50,11 @@ export class LineOAWebhookService {
       if (!rawBody) {
         this.logger.error('rawBody is missing! Signature verification failed because JSON.stringify was used.');
       }
-      // TODO: Re-enable this check in production or when keys are fixed!
-      this.logger.warn('WARNING: Signature verification failed but proceeding for debugging/QA purposes only!');
-      // throw new ForbiddenException('Invalid signature');
+      
+      this.logger.warn('WARNING: Signature verification failed! Rejecting request.');
+      throw new ForbiddenException('Invalid signature');
+    } else {
+      this.logger.log('✅ Signature verified successfully');
     }
 
     // จัดการ events
@@ -53,6 +72,8 @@ export class LineOAWebhookService {
    * ทุก webhook request ต้องลงนามด้วย HMAC SHA256
    */
   private verifySignature(body: Buffer, signature: string): boolean {
+    if (!this.channelSecret) return false;
+    
     const hash = crypto
       .createHmac('sha256', this.channelSecret)
       .update(body)
@@ -171,7 +192,10 @@ export class LineOAWebhookService {
 
         await client.pushMessage(lineUserId, reply);
       } catch (error) {
-        this.logger.error(`Failed to reply to message:`, error);
+        this.logger.error(`Failed to reply to message from ${lineUserId}:`, error?.message || error);
+        if (error?.statusCode) {
+          this.logger.error(`LINE API Status: ${error.statusCode}, Body: ${JSON.stringify(error.originalError?.response?.data || error.body || 'N/A')}`);
+        }
       }
     }
   }
