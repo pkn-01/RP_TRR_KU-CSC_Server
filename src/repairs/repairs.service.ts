@@ -472,6 +472,7 @@ export class RepairsService {
               ticketId: ticket.id,
               problemTitle: ticket.problemTitle,
               problemDescription: ticket.problemDescription || undefined,
+              adminNote: dto.notes || undefined,
               reporterName: ticket.reporterName,
               reporterPhone: ticket.reporterPhone || undefined,
               department: ticket.reporterDepartment || 'ไม่ระบุแผนก',

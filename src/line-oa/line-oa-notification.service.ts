@@ -156,6 +156,7 @@ export class LineOANotificationService {
       ticketId?: number;
       problemTitle: string;
       problemDescription?: string;
+      adminNote?: string;
       reporterName: string;
       reporterPhone?: string;
       department?: string;
@@ -645,17 +646,19 @@ export class LineOANotificationService {
       },
     ];
 
-    // ── Description ──
-    if (payload.problemDescription) {
+    // ── Admin Note ──
+    if (payload.adminNote) {
       bodyContents.push({
         type: 'box', layout: 'vertical',
-        backgroundColor: COLORS.SECTION_BG,
+        backgroundColor: '#FFF7ED',
         paddingAll: '12px',
         cornerRadius: 'md',
         margin: 'md',
+        borderColor: '#FDBA7440',
+        borderWidth: '1px',
         contents: [
-          { type: 'text', text: 'รายละเอียดเพิ่มเติม', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
-          { type: 'text', text: payload.problemDescription, size: 'sm', color: COLORS.VALUE, wrap: true, margin: 'xs' },
+          { type: 'text', text: 'หมายเหตุจากแอดมิน', size: 'xxs', color: '#92400E', weight: 'bold' },
+          { type: 'text', text: payload.adminNote, size: 'sm', color: '#78350F', wrap: true, margin: 'xs' },
         ],
       });
     }
