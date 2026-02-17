@@ -1,10 +1,19 @@
 {
   "version": 2,
-  "name": "rp-trr-server-internship",
   "buildCommand": "npx prisma generate && npm run build",
-  "outputDirectory": "dist",
-  "public": false,
-  "env": {
-    "NODE_ENV": "production"
-  }
+  "builds": [
+    {
+      "src": "api/index.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["../dist/**"]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "api/index.js"
+    }
+  ]
 }

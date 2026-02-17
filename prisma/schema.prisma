@@ -99,6 +99,8 @@ model Notification {
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
   user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Loan {
@@ -132,6 +134,8 @@ model LineOALink {
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([lineUserId])
 }
 
 model LineNotification {
@@ -176,6 +180,13 @@ model RepairTicket {
   assignees               RepairTicketAssignee[]
   logs                    RepairTicketLog[]
   assignmentHistory       RepairAssignmentHistory[]
+
+  // PERF: Indexes for common query patterns
+  @@index([status])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([reporterDepartment])
+  @@index([status, createdAt])
 }
 
 model RepairAttachment {

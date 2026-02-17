@@ -113,7 +113,7 @@ export class UsersService {
         id: true,
         name: true,
         email: true,
-        password: true,
+        // SECURITY: password hash removed from select - never expose to API
         role: true,
         department: true,
         phoneNumber: true,
@@ -391,7 +391,7 @@ export class UsersService {
         id: true,
         name: true,
         email: true,
-        password: true,
+        // SECURITY: password hash removed from select
         role: true,
         department: true,
         phoneNumber: true,

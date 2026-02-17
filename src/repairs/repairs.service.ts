@@ -187,7 +187,8 @@ export class RepairsService {
 
       if (lineUserId) {
         // Direct notification for guest users (LIFF)
-        await this.lineNotificationService.notifyReporterDirectly(lineUserId, {
+        // 🚀 PERFORMACE: Fire-and-forget (Don't await) to prevent Vercel Timeout
+        this.lineNotificationService.notifyReporterDirectly(lineUserId, {
           ticketCode: ticket.ticketCode,
           status: ticket.status,
           urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',
@@ -196,40 +197,50 @@ export class RepairsService {
           imageUrl,
           createdAt: ticket.createdAt,
           // remark: 'ได้รับเรื่องแจ้งซ่อมของคุณแล้ว ระบบจะแจ้งเตือนเมื่อมีการอัปเดตสถานะ',
-        });
-        this.logger.log(`LINE notification sent directly to reporter: ${lineUserId}`);
+        }).catch(err => this.logger.error(`Failed to send background LINE notification to ${lineUserId}:`, err));
+        
+        this.logger.log(`LINE notification initiated for reporter: ${lineUserId}`);
       } else if (userId) {
         // Notification for logged-in users
-        await this.lineNotificationService.notifyRepairTicketStatusUpdate(userId, {
+        // 🚀 PERFORMACE: Fire-and-forget
+        this.lineNotificationService.notifyRepairTicketStatusUpdate(userId, {
           ticketCode: ticket.ticketCode,
           problemTitle: ticket.problemTitle,
           status: ticket.status,
           // remark: 'ได้รับเรื่องแจ้งซ่อมของคุณแล้ว ระบบจะแจ้งเตือนเมื่อมีความคืบหน้า',
           technicianNames: [],
           updatedAt: ticket.createdAt,
-        });
-        this.logger.log(`LINE notification sent to user ${userId} for new ticket`);
+        }).catch(err => this.logger.error(`Failed to send background LINE notification to user ${userId}:`, err));
+
+        this.logger.log(`LINE notification initiated for user ${userId}`);
       }
     } catch (error) {
-      // Don't fail the ticket creation if notification fails
-      this.logger.error('Failed to send reporter LINE notification:', error);
+      // Don't fail the ticket creation if notification setup fails
+      this.logger.error('Failed to initiate reporter LINE notification:', error);
     }
 
     return ticket;
   }
 
+  // SECURITY: User select helper to never expose password hash
+  private readonly safeUserSelect = {
+    id: true, name: true, email: true, role: true,
+    department: true, phoneNumber: true, lineId: true,
+    profilePicture: true,
+  } as const;
+
   async findOne(id: number) {
     const ticket = await this.prisma.repairTicket.findUnique({
       where: { id },
       include: {
-        user: true,
-        assignees: { include: { user: true } },
+        user: { select: this.safeUserSelect },
+        assignees: { include: { user: { select: this.safeUserSelect } } },
         attachments: true,
-        logs: { include: { user: true }, orderBy: { createdAt: 'desc' } },
+        logs: { include: { user: { select: this.safeUserSelect } }, orderBy: { createdAt: 'desc' } },
         assignmentHistory: {
           include: { 
-            assigner: true,
-            assignee: true
+            assigner: { select: this.safeUserSelect },
+            assignee: { select: this.safeUserSelect }
           },
           orderBy: { createdAt: 'desc' }
         }
@@ -243,10 +254,10 @@ export class RepairsService {
     const ticket = await this.prisma.repairTicket.findUnique({
       where: { ticketCode },
       include: {
-        user: true,
-        assignees: { include: { user: true } },
+        user: { select: this.safeUserSelect },
+        assignees: { include: { user: { select: this.safeUserSelect } } },
         attachments: true,
-        logs: { include: { user: true }, orderBy: { createdAt: 'desc' } },
+        logs: { include: { user: { select: this.safeUserSelect } }, orderBy: { createdAt: 'desc' } },
       },
     });
     if (!ticket) throw new NotFoundException(`Ticket ${ticketCode} not found`);
@@ -746,33 +757,49 @@ export class RepairsService {
   }
 
   async getDepartmentStatistics() {
-    const departments = ['ไอที', 'ลูกหีบ', 'ฝ่ายอ้อย', 'กฏหมาย', 'บัญชี'];
-    
-    const stats = await Promise.all(
-      departments.map(async (dept) => {
-        const tickets = await this.prisma.repairTicket.findMany({
-          where: { reporterDepartment: dept },
-          select: { status: true },
-        });
+    // PERF: Single groupBy query replaces 5 separate N+1 queries
+    const rawStats = await this.prisma.repairTicket.groupBy({
+      by: ['reporterDepartment', 'status'],
+      _count: { status: true },
+      where: {
+        reporterDepartment: { not: null },
+      },
+    });
 
-        const total = tickets.length;
-        const pending = tickets.filter(t => t.status === RepairTicketStatus.PENDING).length;
-        const inProgress = tickets.filter(t => t.status === RepairTicketStatus.IN_PROGRESS).length;
-        const completed = tickets.filter(t => t.status === RepairTicketStatus.COMPLETED).length;
-        const cancelled = tickets.filter(t => t.status === RepairTicketStatus.CANCELLED).length;
+    // Aggregate into department-level stats
+    const deptMap = new Map<string, { total: number; pending: number; inProgress: number; completed: number; cancelled: number }>();
 
-        return {
-          department: dept,
-          total,
-          pending,
-          inProgress,
-          completed,
-          cancelled,
-        };
-      })
-    );
+    for (const row of rawStats) {
+      const dept = row.reporterDepartment || 'ไม่ระบุ';
+      if (!deptMap.has(dept)) {
+        deptMap.set(dept, { total: 0, pending: 0, inProgress: 0, completed: 0, cancelled: 0 });
+      }
+      const stat = deptMap.get(dept)!;
+      const count = row._count.status;
+      stat.total += count;
 
-    return stats;
+      switch (row.status) {
+        case RepairTicketStatus.PENDING:
+          stat.pending += count;
+          break;
+        case RepairTicketStatus.IN_PROGRESS:
+        case RepairTicketStatus.ASSIGNED:
+        case RepairTicketStatus.WAITING_PARTS:
+          stat.inProgress += count;
+          break;
+        case RepairTicketStatus.COMPLETED:
+          stat.completed += count;
+          break;
+        case RepairTicketStatus.CANCELLED:
+          stat.cancelled += count;
+          break;
+      }
+    }
+
+    return Array.from(deptMap.entries()).map(([department, stats]) => ({
+      department,
+      ...stats,
+    }));
   }
 
   async getSchedule() {
@@ -824,11 +851,10 @@ export class RepairsService {
 
     return this.prisma.repairTicket.findMany({
       where,
-      take: limit,
+      take: limit || 100, // PERF: Default pagination to prevent unbounded queries
       include: {
-        user: true,
-        assignees: { include: { user: true } },
-        // Optimized: Removed heavy relations (attachments, logs) for list view
+        user: { select: this.safeUserSelect },
+        assignees: { include: { user: { select: this.safeUserSelect } } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -845,11 +871,11 @@ export class RepairsService {
     return this.prisma.repairTicket.findMany({
       where: { userId },
       include: {
-        user: true,
-        assignees: { include: { user: true } },
+        user: { select: this.safeUserSelect },
+        assignees: { include: { user: { select: this.safeUserSelect } } },
         attachments: true,
         logs: {
-          include: { user: true },
+          include: { user: { select: this.safeUserSelect } },
           orderBy: { createdAt: 'desc' },
         },
       },
