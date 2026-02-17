@@ -4,46 +4,62 @@ const path = require('path');
 // Global app cache for warm starts
 let appCache = null;
 
-// Helper to debug file system if module load fails
-function debugFs(startPath) {
+function getDirectoryStructure(dir) {
   try {
-    const items = fs.readdirSync(startPath);
-    console.log(`Contents of ${startPath}:`, items);
+    const items = fs.readdirSync(dir);
+    const structure = {};
     items.forEach(item => {
-        const itemPath = path.join(startPath, item);
-        if (fs.statSync(itemPath).isDirectory()) {
-            console.log(`Contents of ${itemPath}:`, fs.readdirSync(itemPath));
+      const fullPath = path.join(dir, item);
+      try {
+        if (fs.statSync(fullPath).isDirectory()) {
+            // Only recurse one level deep to avoid huge response
+            structure[item] = fs.readdirSync(fullPath);
+        } else {
+            structure[item] = 'file';
         }
+      } catch (e) {
+        structure[item] = 'error accessing';
+      }
     });
+    return structure;
   } catch (e) {
-    console.error(`Error reading ${startPath}:`, e.message);
+    return `Error reading ${dir}: ${e.message}`;
   }
 }
 
 async function getApp() {
   if (appCache) return appCache;
 
-  // Verify dist/src/app.module exists before requiring
-  // Note: Vercel function root might be different from project root
-  // We assume api/index.js is at PROJECT_ROOT/api/index.js
-  // And dist is at PROJECT_ROOT/dist
-  // So path to dist/src/app.module is ../dist/src/app.module
+  // Debug: Check where we are
+  const projectRoot = path.resolve(__dirname, '..');
   
-  const modulePathRel = '../dist/src/app.module';
-  const modulePathAbs = path.resolve(__dirname, modulePathRel + '.js');
+  // Try to find app.module.js
+  // Common paths to check
+  const potentialPaths = [
+    '../dist/src/app.module.js',
+    '../dist/app.module.js',
+    './app.module.js',
+    '../app.module.js'
+  ];
 
-  if (!fs.existsSync(modulePathAbs)) {
-     console.error(`Module not found at ${modulePathAbs}`);
-     console.log('Current directory:', __dirname);
-     debugFs(path.resolve(__dirname, '..')); // List project root
-     throw new Error(`Module not found: ${modulePathRel}`);
+  let modulePath = null;
+  for (const p of potentialPaths) {
+    const absPath = path.resolve(__dirname, p);
+    if (fs.existsSync(absPath)) {
+      modulePath = p;
+      break;
+    }
+  }
+
+  if (!modulePath) {
+     throw new Error(`Could not find app.module.js. Checked: ${potentialPaths.join(', ')}`);
   }
 
   const { NestFactory } = require('@nestjs/core');
-  const { AppModule } = require(modulePathRel);
+  const { AppModule } = require(modulePath);
   const { ValidationPipe } = require('@nestjs/common');
   const { HttpAdapterHost } = require('@nestjs/core');
-  const { AllExceptionsFilter } = require('../dist/src/all-exceptions.filter'); // Also check this
+  const { AllExceptionsFilter } = require('../dist/src/all-exceptions.filter');
 
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
@@ -67,7 +83,6 @@ async function getApp() {
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      // Allow all in serverless environment for now to fix CORS issues
       callback(null, true);
     },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
@@ -94,15 +109,16 @@ module.exports = async function handler(req, res) {
     const expressInstance = nestApp.getHttpAdapter().getInstance();
     expressInstance(req, res);
   } catch (error) {
-    console.error('Serverless Function Error (Detailed):', error);
+    console.error('Serverless Function Error:', error);
     res.status(500).json({
       statusCode: 500,
       message: 'Internal Server Error (Backend Init Failed)',
       error: error.message,
-      stack: process.env.NODE_ENV === 'production' ? undefined : error.stack,
       debug: {
         cwd: process.cwd(),
         dirname: __dirname,
+        // List contents of /var/task (project root)
+        rootContents: getDirectoryStructure(path.resolve(__dirname, '..')),
       }
     });
   }
