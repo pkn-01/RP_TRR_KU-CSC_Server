@@ -70,8 +70,7 @@ export class LoansController {
         throw new BadRequestException('User ID not found');
       }
 
-      // If user is ADMIN or IT, they can see all loans (pass null/undefined)
-      // Otherwise, they can only see their own loans
+     
       const isStaff = userRole === 'ADMIN' || userRole === 'IT';
       const searchId = isStaff ? null : userId;
       
