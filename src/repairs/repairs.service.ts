@@ -218,18 +218,25 @@ export class RepairsService {
     return ticket;
   }
 
+  // SECURITY: User select helper to never expose password hash
+  private readonly safeUserSelect = {
+    id: true, name: true, email: true, role: true,
+    department: true, phoneNumber: true, lineId: true,
+    profilePicture: true,
+  } as const;
+
   async findOne(id: number) {
     const ticket = await this.prisma.repairTicket.findUnique({
       where: { id },
       include: {
-        user: true,
-        assignees: { include: { user: true } },
+        user: { select: this.safeUserSelect },
+        assignees: { include: { user: { select: this.safeUserSelect } } },
         attachments: true,
-        logs: { include: { user: true }, orderBy: { createdAt: 'desc' } },
+        logs: { include: { user: { select: this.safeUserSelect } }, orderBy: { createdAt: 'desc' } },
         assignmentHistory: {
           include: { 
-            assigner: true,
-            assignee: true
+            assigner: { select: this.safeUserSelect },
+            assignee: { select: this.safeUserSelect }
           },
           orderBy: { createdAt: 'desc' }
         }
@@ -243,10 +250,10 @@ export class RepairsService {
     const ticket = await this.prisma.repairTicket.findUnique({
       where: { ticketCode },
       include: {
-        user: true,
-        assignees: { include: { user: true } },
+        user: { select: this.safeUserSelect },
+        assignees: { include: { user: { select: this.safeUserSelect } } },
         attachments: true,
-        logs: { include: { user: true }, orderBy: { createdAt: 'desc' } },
+        logs: { include: { user: { select: this.safeUserSelect } }, orderBy: { createdAt: 'desc' } },
       },
     });
     if (!ticket) throw new NotFoundException(`Ticket ${ticketCode} not found`);
@@ -746,33 +753,49 @@ export class RepairsService {
   }
 
   async getDepartmentStatistics() {
-    const departments = ['ไอที', 'ลูกหีบ', 'ฝ่ายอ้อย', 'กฏหมาย', 'บัญชี'];
-    
-    const stats = await Promise.all(
-      departments.map(async (dept) => {
-        const tickets = await this.prisma.repairTicket.findMany({
-          where: { reporterDepartment: dept },
-          select: { status: true },
-        });
+    // PERF: Single groupBy query replaces 5 separate N+1 queries
+    const rawStats = await this.prisma.repairTicket.groupBy({
+      by: ['reporterDepartment', 'status'],
+      _count: { status: true },
+      where: {
+        reporterDepartment: { not: null },
+      },
+    });
 
-        const total = tickets.length;
-        const pending = tickets.filter(t => t.status === RepairTicketStatus.PENDING).length;
-        const inProgress = tickets.filter(t => t.status === RepairTicketStatus.IN_PROGRESS).length;
-        const completed = tickets.filter(t => t.status === RepairTicketStatus.COMPLETED).length;
-        const cancelled = tickets.filter(t => t.status === RepairTicketStatus.CANCELLED).length;
+    // Aggregate into department-level stats
+    const deptMap = new Map<string, { total: number; pending: number; inProgress: number; completed: number; cancelled: number }>();
 
-        return {
-          department: dept,
-          total,
-          pending,
-          inProgress,
-          completed,
-          cancelled,
-        };
-      })
-    );
+    for (const row of rawStats) {
+      const dept = row.reporterDepartment || 'ไม่ระบุ';
+      if (!deptMap.has(dept)) {
+        deptMap.set(dept, { total: 0, pending: 0, inProgress: 0, completed: 0, cancelled: 0 });
+      }
+      const stat = deptMap.get(dept)!;
+      const count = row._count.status;
+      stat.total += count;
 
-    return stats;
+      switch (row.status) {
+        case RepairTicketStatus.PENDING:
+          stat.pending += count;
+          break;
+        case RepairTicketStatus.IN_PROGRESS:
+        case RepairTicketStatus.ASSIGNED:
+        case RepairTicketStatus.WAITING_PARTS:
+          stat.inProgress += count;
+          break;
+        case RepairTicketStatus.COMPLETED:
+          stat.completed += count;
+          break;
+        case RepairTicketStatus.CANCELLED:
+          stat.cancelled += count;
+          break;
+      }
+    }
+
+    return Array.from(deptMap.entries()).map(([department, stats]) => ({
+      department,
+      ...stats,
+    }));
   }
 
   async getSchedule() {
@@ -824,11 +847,10 @@ export class RepairsService {
 
     return this.prisma.repairTicket.findMany({
       where,
-      take: limit,
+      take: limit || 100, // PERF: Default pagination to prevent unbounded queries
       include: {
-        user: true,
-        assignees: { include: { user: true } },
-        // Optimized: Removed heavy relations (attachments, logs) for list view
+        user: { select: this.safeUserSelect },
+        assignees: { include: { user: { select: this.safeUserSelect } } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -845,11 +867,11 @@ export class RepairsService {
     return this.prisma.repairTicket.findMany({
       where: { userId },
       include: {
-        user: true,
-        assignees: { include: { user: true } },
+        user: { select: this.safeUserSelect },
+        assignees: { include: { user: { select: this.safeUserSelect } } },
         attachments: true,
         logs: {
-          include: { user: true },
+          include: { user: { select: this.safeUserSelect } },
           orderBy: { createdAt: 'desc' },
         },
       },

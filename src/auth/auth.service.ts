@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -9,6 +9,7 @@ import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
@@ -92,18 +93,16 @@ export class AuthService {
       throw new BadRequestException('Authorization code is required');
     }
     
-    console.log('[LINE Auth] Processing callback with code:', code.substring(0, 10) + '...');
+    this.logger.log('[LINE Auth] Processing callback');
     try {
       // Step 1: Exchange authorization code for access token
-      console.log('[LINE Auth] Step 1: Exchanging authorization code');
       const tokenResponse = await this.lineOAuth.exchangeCodeForToken(code);
       const lineAccessToken = tokenResponse.access_token;
       const lineUserId = tokenResponse.user_id;
 
-      console.log('[LINE Auth] Step 2: Access token obtained');
+
 
       // Step 3: Check if user exists
-      console.log('[LINE Auth] Step 3: Checking if user exists', { lineUserId });
       let user = await this.prisma.user.findFirst({
         where: {
           lineOALink: {
@@ -114,7 +113,6 @@ export class AuthService {
 
       // If user doesn't exist, create a new user
       if (!user) {
-        console.log('[LINE Auth] Step 4a: Creating new user');
         const lineProfile = await this.lineOAuth.getUserProfile(lineAccessToken);
 
         user = await this.prisma.user.create({
@@ -132,9 +130,8 @@ export class AuthService {
             },
           },
         });
-        console.log('[LINE Auth] New user created', { userId: user.id });
+        this.logger.log(`[LINE Auth] New user created: ${user.id}`);
       } else {
-        console.log('[LINE Auth] Step 4b: Existing user found', { userId: user.id });
         if (!user.lineId) {
           user = await this.prisma.user.update({
             where: { id: user.id },
@@ -146,7 +143,6 @@ export class AuthService {
       }
 
       // Step 5: Generate JWT token
-      console.log('[LINE Auth] Step 5: Generating JWT token', { userId: user.id, role: user.role });
 
       const payload = {
         sub: user.id,
@@ -160,10 +156,10 @@ export class AuthService {
         message: 'LOGIN success via LINE',
       };
 
-      console.log('[LINE Auth] ✅ Authentication successful', { userId: user.id, role: user.role });
+      this.logger.log(`[LINE Auth] Authentication successful for user ${user.id}`);
       return result;
     } catch (error: any) {
-      console.error('[LINE Auth] ❌ Callback error:', error.message);
+      this.logger.error('[LINE Auth] Callback error:', error.message);
       throw error;
     }
   }
@@ -171,8 +167,6 @@ export class AuthService {
 
   async getProfile(userId: number) {
     try {
-      console.log('Fetching profile for userId:', userId);
-      
       if (!userId || typeof userId !== 'number') {
         throw new BadRequestException('Invalid user ID');
       }
@@ -196,10 +190,9 @@ export class AuthService {
         throw new UnauthorizedException('User not found');
       }
 
-      console.log('Profile found:', user.id);
       return user;
     } catch (error: any) {
-      console.error('Error in getProfile:', error.message);
+      this.logger.error('Error in getProfile:', error.message);
       throw error;
     }
   }
