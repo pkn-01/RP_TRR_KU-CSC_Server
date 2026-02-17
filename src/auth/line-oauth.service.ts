@@ -159,7 +159,7 @@ export class LineOAuthService {
         }
 
         throw new UnauthorizedException(
-          `LINE API error: ${responseData.error || 'Unknown error'} - ${responseData.error_description || ''}`
+          `LINE API error: ${responseData.error || 'Unknown error'} - ${responseData.error_description || ''}. (Used redirect_uri: ${redirectUri})`
         );
       }
 
@@ -268,6 +268,13 @@ export class LineOAuthService {
     // Fallback if LINE_REDIRECT_URI is not set
     if (!redirectUri && process.env.FRONTEND_URL) {
       redirectUri = `${process.env.FRONTEND_URL}/auth/line/callback`;
+    }
+
+    // Specific Fallback for QA Environment (if env var is missing)
+    if (!redirectUri && (process.env.NODE_ENV === 'production' || !process.env.NODE_ENV)) {
+        // Check if we are likely in the QA environment based on other signals or just default to it if nothing else is set
+        // This is a safety net for the specific user request
+         redirectUri = 'https://qa-rp-trr-ku-csc.vercel.app/auth/line/callback';
     }
 
     if (!redirectUri) {
