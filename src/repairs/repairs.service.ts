@@ -187,7 +187,8 @@ export class RepairsService {
 
       if (lineUserId) {
         // Direct notification for guest users (LIFF)
-        await this.lineNotificationService.notifyReporterDirectly(lineUserId, {
+        // 🚀 PERFORMACE: Fire-and-forget (Don't await) to prevent Vercel Timeout
+        this.lineNotificationService.notifyReporterDirectly(lineUserId, {
           ticketCode: ticket.ticketCode,
           status: ticket.status,
           urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',
@@ -196,23 +197,26 @@ export class RepairsService {
           imageUrl,
           createdAt: ticket.createdAt,
           // remark: 'ได้รับเรื่องแจ้งซ่อมของคุณแล้ว ระบบจะแจ้งเตือนเมื่อมีการอัปเดตสถานะ',
-        });
-        this.logger.log(`LINE notification sent directly to reporter: ${lineUserId}`);
+        }).catch(err => this.logger.error(`Failed to send background LINE notification to ${lineUserId}:`, err));
+        
+        this.logger.log(`LINE notification initiated for reporter: ${lineUserId}`);
       } else if (userId) {
         // Notification for logged-in users
-        await this.lineNotificationService.notifyRepairTicketStatusUpdate(userId, {
+        // 🚀 PERFORMACE: Fire-and-forget
+        this.lineNotificationService.notifyRepairTicketStatusUpdate(userId, {
           ticketCode: ticket.ticketCode,
           problemTitle: ticket.problemTitle,
           status: ticket.status,
           // remark: 'ได้รับเรื่องแจ้งซ่อมของคุณแล้ว ระบบจะแจ้งเตือนเมื่อมีความคืบหน้า',
           technicianNames: [],
           updatedAt: ticket.createdAt,
-        });
-        this.logger.log(`LINE notification sent to user ${userId} for new ticket`);
+        }).catch(err => this.logger.error(`Failed to send background LINE notification to user ${userId}:`, err));
+
+        this.logger.log(`LINE notification initiated for user ${userId}`);
       }
     } catch (error) {
-      // Don't fail the ticket creation if notification fails
-      this.logger.error('Failed to send reporter LINE notification:', error);
+      // Don't fail the ticket creation if notification setup fails
+      this.logger.error('Failed to initiate reporter LINE notification:', error);
     }
 
     return ticket;

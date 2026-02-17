@@ -106,9 +106,18 @@ export class RepairsController {
       // Pass lineUserId separately for direct notification linking
       return await this.repairsService.create(user.id, dto, files, body.lineUserId);
     } catch (error: any) {
-      this.logger.error(error.message, error.stack);
+      this.logger.error(`LIFF Create Error: ${error.message}`, error.stack);
+      
+      // Return more specific error message if available and safe
+      const msg = error.response?.message || error.message || 'สร้างรายการแจ้งซ่อมไม่สำเร็จ';
+      
       throw new HttpException(
-        'สร้างรายการแจ้งซ่อมไม่สำเร็จ',
+        {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          message: msg,
+          error: 'Internal Server Error',
+          debug: error.message // Include debug info locally (remove for strict prod)
+        },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
