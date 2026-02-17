@@ -12,8 +12,12 @@ function getDirectoryStructure(dir) {
       const fullPath = path.join(dir, item);
       try {
         if (fs.statSync(fullPath).isDirectory()) {
-            // Only recurse one level deep to avoid huge response
-            structure[item] = fs.readdirSync(fullPath);
+            // For dist, recurse deeper to help debug
+            if (item === 'dist' || dir.endsWith('dist') || dir.endsWith('src')) {
+                structure[item] = getDirectoryStructure(fullPath);
+            } else {
+                structure[item] = fs.readdirSync(fullPath).slice(0, 10); // Limit output
+            }
         } else {
             structure[item] = 'file';
         }
@@ -51,15 +55,33 @@ async function getApp() {
     }
   }
 
+  // If still not found, throw error but catch it in handler to show directory structure
   if (!modulePath) {
-     throw new Error(`Could not find app.module.js. Checked: ${potentialPaths.join(', ')}`);
+     const distPath = path.join(__dirname, '../dist');
+     let distContents = "dist not found";
+     if (fs.existsSync(distPath)) {
+        distContents = getDirectoryStructure(distPath);
+     }
+     throw new Error(`Could not find app.module.js. Checked: ${potentialPaths.join(', ')}. Dist contents: ${JSON.stringify(distContents)}`);
   }
 
   const { NestFactory } = require('@nestjs/core');
   const { AppModule } = require(modulePath);
   const { ValidationPipe } = require('@nestjs/common');
   const { HttpAdapterHost } = require('@nestjs/core');
-  const { AllExceptionsFilter } = require('../dist/src/all-exceptions.filter');
+  
+  // Try to find filter
+  const filterPathRel = '../dist/src/all-exceptions.filter';
+  const filterPathAbs = path.resolve(__dirname, filterPathRel + '.js');
+  
+  let AllExceptionsFilter;
+  if (fs.existsSync(filterPathAbs)) {
+      AllExceptionsFilter = require(filterPathRel).AllExceptionsFilter;
+  } else {
+      console.warn("AllExceptionsFilter not found at " + filterPathAbs);
+      // Fallback dummy filter if missing (to prevent crash)
+      AllExceptionsFilter = class { catch(exception, host) {} };
+  }
 
   const app = await NestFactory.create(AppModule, {
     rawBody: true,
@@ -117,7 +139,7 @@ module.exports = async function handler(req, res) {
       debug: {
         cwd: process.cwd(),
         dirname: __dirname,
-        // List contents of /var/task (project root)
+        // Detailed recursive listing for dist
         rootContents: getDirectoryStructure(path.resolve(__dirname, '..')),
       }
     });
