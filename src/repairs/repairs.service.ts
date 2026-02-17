@@ -106,6 +106,7 @@ export class RepairsService {
   async create(userId: number, dto: any, files?: Express.Multer.File[], lineUserId?: string) {
     // Debug logging
     this.logger.log(`Creating ticket - lineUserId parameter: ${lineUserId || 'NOT PROVIDED'}`);
+    this.logger.log(`Creating ticket - dto.reporterLineId: ${dto.reporterLineId || 'NOT PROVIDED'}`);
     
     // Generate custom ticket code: TRR-ddMMyyyyXXX
     const ticketCode = await this.generateTicketCode();
@@ -185,10 +186,15 @@ export class RepairsService {
     try {
       const imageUrl = attachmentData.length > 0 ? attachmentData[0].fileUrl : undefined;
 
-      if (lineUserId) {
+      // Logic for notification target:
+      // 1. Use explicit lineUserId if provided (best case)
+      // 2. Fallback to reporterLineId if it looks like a valid LINE User ID (starts with U)
+      const targetLineUserId = lineUserId || (dto.reporterLineId && dto.reporterLineId.startsWith('U') ? dto.reporterLineId : undefined);
+
+      if (targetLineUserId) {
         // Direct notification for guest users (LIFF)
         // 🚀 PERFORMACE: Fire-and-forget (Don't await) to prevent Vercel Timeout
-        this.lineNotificationService.notifyReporterDirectly(lineUserId, {
+        this.lineNotificationService.notifyReporterDirectly(targetLineUserId, {
           ticketCode: ticket.ticketCode,
           status: ticket.status,
           urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',
@@ -197,9 +203,9 @@ export class RepairsService {
           imageUrl,
           createdAt: ticket.createdAt,
           // remark: 'ได้รับเรื่องแจ้งซ่อมของคุณแล้ว ระบบจะแจ้งเตือนเมื่อมีการอัปเดตสถานะ',
-        }).catch(err => this.logger.error(`Failed to send background LINE notification to ${lineUserId}:`, err));
+        }).catch(err => this.logger.error(`Failed to send background LINE notification to ${targetLineUserId}:`, err));
         
-        this.logger.log(`LINE notification initiated for reporter: ${lineUserId}`);
+        this.logger.log(`LINE notification initiated for reporter: ${targetLineUserId} (Source: ${lineUserId ? 'Direct' : 'Fallback'})`);
       } else if (userId) {
         // Notification for logged-in users
         // 🚀 PERFORMACE: Fire-and-forget
