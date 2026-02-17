@@ -193,8 +193,8 @@ export class RepairsService {
 
       if (targetLineUserId) {
         // Direct notification for guest users (LIFF)
-        // 🚀 PERFORMACE: Fire-and-forget (Don't await) to prevent Vercel Timeout
-        this.lineNotificationService.notifyReporterDirectly(targetLineUserId, {
+        // ✅ MUST await on Vercel Serverless — fire-and-forget gets killed before completion
+        await this.lineNotificationService.notifyReporterDirectly(targetLineUserId, {
           ticketCode: ticket.ticketCode,
           status: ticket.status,
           urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',
@@ -202,23 +202,21 @@ export class RepairsService {
           description: ticket.problemDescription || ticket.problemTitle,
           imageUrl,
           createdAt: ticket.createdAt,
-          // remark: 'ได้รับเรื่องแจ้งซ่อมของคุณแล้ว ระบบจะแจ้งเตือนเมื่อมีการอัปเดตสถานะ',
-        }).catch(err => this.logger.error(`Failed to send background LINE notification to ${targetLineUserId}:`, err));
+        });
         
-        this.logger.log(`LINE notification initiated for reporter: ${targetLineUserId} (Source: ${lineUserId ? 'Direct' : 'Fallback'})`);
+        this.logger.log(`LINE notification sent to reporter: ${targetLineUserId} (Source: ${lineUserId ? 'Direct' : 'Fallback'})`);
       } else if (userId) {
         // Notification for logged-in users
-        // 🚀 PERFORMACE: Fire-and-forget
-        this.lineNotificationService.notifyRepairTicketStatusUpdate(userId, {
+        // ✅ MUST await on Vercel Serverless
+        await this.lineNotificationService.notifyRepairTicketStatusUpdate(userId, {
           ticketCode: ticket.ticketCode,
           problemTitle: ticket.problemTitle,
           status: ticket.status,
-          // remark: 'ได้รับเรื่องแจ้งซ่อมของคุณแล้ว ระบบจะแจ้งเตือนเมื่อมีความคืบหน้า',
           technicianNames: [],
           updatedAt: ticket.createdAt,
-        }).catch(err => this.logger.error(`Failed to send background LINE notification to user ${userId}:`, err));
+        });
 
-        this.logger.log(`LINE notification initiated for user ${userId}`);
+        this.logger.log(`LINE notification sent to user ${userId}`);
       }
     } catch (error) {
       // Don't fail the ticket creation if notification setup fails
