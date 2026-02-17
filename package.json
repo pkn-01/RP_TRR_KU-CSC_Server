@@ -4,7 +4,7 @@
   "description": "TRR Internship Backend",
   "main": "dist/main.js",
   "scripts": {
-    "postinstall": "prisma generate",
+    "postinstall": "prisma generate && nest build",
     "build": "nest build",
     "start": "nest start",
     "start:dev": "nest start --watch",
