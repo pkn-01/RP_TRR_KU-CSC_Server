@@ -10,6 +10,7 @@ async function getApp() {
   if (!app) {
     app = await NestFactory.create(AppModule, {
       rawBody: true,
+      logger: console, // Ensure logs are printed
     });
 
     const httpAdapter = app.get(HttpAdapterHost);
@@ -32,7 +33,7 @@ async function getApp() {
         if (allowedOrigins.includes(origin)) {
           callback(null, true);
         } else {
-          callback(null, true);
+          callback(null, true); 
         }
       },
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
@@ -54,7 +55,17 @@ async function getApp() {
 }
 
 module.exports = async function handler(req, res) {
-  const nestApp = await getApp();
-  const expressInstance = nestApp.getHttpAdapter().getInstance();
-  expressInstance(req, res);
+  try {
+    const nestApp = await getApp();
+    const expressInstance = nestApp.getHttpAdapter().getInstance();
+    expressInstance(req, res);
+  } catch (error) {
+    console.error('Serverless Function Error:', error);
+    res.status(500).json({
+      statusCode: 500,
+      message: 'Internal Server Error (Backend Init Failed)',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'production' ? undefined : error.stack
+    });
+  }
 };
