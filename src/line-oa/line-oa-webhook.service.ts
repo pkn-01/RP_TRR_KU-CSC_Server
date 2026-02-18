@@ -216,14 +216,26 @@ export class LineOAWebhookService {
    * ผู้ใช้จะได้รับ notification อัตโนมัติเพราะ lineUserId ถูกส่งไปกับ URL
    */
   private async handleRepairKeyword(lineUserId: string, client: line.Client, replyToken?: string) {
-    const frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc-2026.vercel.app';
-    const repairFormUrl = `${frontendUrl}/repairs/liff/form?lineUserId=${lineUserId}`;
+    // Use LIFF URL so the form opens inside LINE app with proper LIFF context
+    // LIFF SDK will get the userId via liff.getProfile() — no need to pass in URL
+    const liffUrl = `https://liff.line.me/${this.liffId}?action=create`;
 
-    this.logger.log(`Sending repair form URL to ${lineUserId}: ${repairFormUrl}`);
+    this.logger.log(`Sending repair form LIFF URL to ${lineUserId}: ${liffUrl}`);
 
     const message: line.Message = {
-      type: 'text',
-      text: `แจ้งซ่อมกดลิ้งนี้\n${repairFormUrl}`,
+      type: 'template',
+      altText: '🔧 กดเพื่อเปิดฟอร์มแจ้งซ่อม',
+      template: {
+        type: 'buttons',
+        text: '🔧 กดปุ่มด้านล่างเพื่อเปิดฟอร์มแจ้งซ่อม',
+        actions: [
+          {
+            type: 'uri',
+            label: 'เปิดฟอร์มแจ้งซ่อม',
+            uri: liffUrl,
+          },
+        ],
+      },
     };
 
     if (replyToken) {
