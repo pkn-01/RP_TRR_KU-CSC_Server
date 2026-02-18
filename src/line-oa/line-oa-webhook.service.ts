@@ -17,6 +17,11 @@ export class LineOAWebhookService {
     private readonly linkingService: LineOALinkingService,
     private readonly lineOAService: LineOAService,
   ) {
+    // Sanitize env vars (remove quotes if present)
+    this.channelSecret = (process.env.LINE_CHANNEL_SECRET || '').replace(/^"|"$/g, '');
+    this.channelAccessToken = (process.env.LINE_ACCESS_TOKEN || '').replace(/^"|"$/g, '');
+    this.liffId = (process.env.LINE_LIFF_ID || '').replace(/^"|"$/g, '');
+
     // Startup diagnostic: check if LINE credentials are loaded
     this.logger.log(`=== LINE Webhook Service Initialized ===`);
     this.logger.log(`LINE_ACCESS_TOKEN: ${this.channelAccessToken ? `SET (${this.channelAccessToken.substring(0, 10)}...)` : '❌ MISSING'}`);
@@ -44,7 +49,6 @@ export class LineOAWebhookService {
     const bodyBuffer = rawBody || Buffer.from(JSON.stringify(body), 'utf-8');
 
     // ตรวจสอบลายเซนต์
-    // ตรวจสอบลายเซนต์
     if (!this.verifySignature(bodyBuffer, signature)) {
       this.logger.error(`Invalid webhook signature. Body size: ${bodyBuffer.length}, Signature: ${signature}`);
       if (!rawBody) {
@@ -52,6 +56,7 @@ export class LineOAWebhookService {
       }
       
       this.logger.warn('WARNING: Signature verification failed! Rejecting request.');
+      // For debugging: temporarily allow invalid signature if needed, but forbidden by default
       throw new ForbiddenException('Invalid signature');
     }
     
@@ -60,7 +65,11 @@ export class LineOAWebhookService {
     // จัดการ events
     if (body.events && Array.isArray(body.events)) {
       for (const event of body.events) {
-        await this.handleEvent(event);
+        try {
+            await this.handleEvent(event);
+        } catch (err) {
+            this.logger.error(`Error handling event: ${err.message}`, err.stack);
+        }
       }
     }
 
@@ -216,32 +225,44 @@ export class LineOAWebhookService {
    * ผู้ใช้จะได้รับ notification อัตโนมัติเพราะ lineUserId ถูกส่งไปกับ URL
    */
   private async handleRepairKeyword(lineUserId: string, client: line.Client, replyToken?: string) {
-    // Use LIFF URL so the form opens inside LINE app with proper LIFF context
-    // LIFF SDK will get the userId via liff.getProfile() — no need to pass in URL
-    const liffUrl = `https://liff.line.me/${this.liffId}?action=create`;
+    try {
+      // Use LIFF URL so the form opens inside LINE app with proper LIFF context
+      // LIFF SDK will get the userId via liff.getProfile() — no need to pass in URL
+      const liffUrl = `https://liff.line.me/${this.liffId}?action=create`;
 
-    this.logger.log(`Sending repair form LIFF URL to ${lineUserId}: ${liffUrl}`);
+      this.logger.log(`Sending repair form LIFF URL to ${lineUserId}: ${liffUrl}`);
 
-    const message: line.Message = {
-      type: 'template',
-      altText: '🔧 กดเพื่อเปิดฟอร์มแจ้งซ่อม',
-      template: {
-        type: 'buttons',
-        text: '🔧 กดปุ่มด้านล่างเพื่อเปิดฟอร์มแจ้งซ่อม',
-        actions: [
-          {
-            type: 'uri',
-            label: 'เปิดฟอร์มแจ้งซ่อม',
-            uri: liffUrl,
-          },
-        ],
-      },
-    };
+      const message: line.Message = {
+        type: 'template',
+        altText: '🔧 กดเพื่อเปิดฟอร์มแจ้งซ่อม',
+        template: {
+          type: 'buttons',
+          text: '🔧 กดปุ่มด้านล่างเพื่อเปิดฟอร์มแจ้งซ่อม',
+          actions: [
+            {
+              type: 'uri',
+              label: 'เปิดฟอร์มแจ้งซ่อม',
+              uri: liffUrl,
+            },
+          ],
+        },
+      };
 
-    if (replyToken) {
-      await client.replyMessage(replyToken, message);
-    } else {
-      await client.pushMessage(lineUserId, message);
+      if (replyToken) {
+        await client.replyMessage(replyToken, message);
+      } else {
+        await client.pushMessage(lineUserId, message);
+      }
+    } catch (error: any) {
+      this.logger.error(`Failed to handle repair keyword response: ${error.message}`, error);
+      
+      // Fallback response if template fails (e.g., if LIFF URL is considered invalid)
+      if (replyToken) {
+        await client.replyMessage(replyToken, {
+          type: 'text',
+          text: `กรุณากดลิงก์เพื่อแจ้งซ่อม: https://liff.line.me/${this.liffId}?action=create`
+        });
+      }
     }
   }
 
