@@ -17,7 +17,7 @@ export class LineOAWebhookService {
     private readonly linkingService: LineOALinkingService,
     private readonly lineOAService: LineOAService,
   ) {
-    // Sanitize env vars (remove quotes if present)
+    // Sanitize env vars 
     this.channelSecret = (process.env.LINE_CHANNEL_SECRET || '').replace(/^"|"$/g, '');
     this.channelAccessToken = (process.env.LINE_ACCESS_TOKEN || '').replace(/^"|"$/g, '');
     this.liffId = (process.env.LINE_LIFF_ID || '').replace(/^"|"$/g, '');
@@ -26,7 +26,7 @@ export class LineOAWebhookService {
     this.logger.log(`=== LINE Webhook Service Initialized ===`);
     this.logger.log(`LINE_ACCESS_TOKEN: ${this.channelAccessToken ? `SET (${this.channelAccessToken.substring(0, 10)}...)` : '❌ MISSING'}`);
     this.logger.log(`LINE_CHANNEL_SECRET: ${this.channelSecret ? `SET (${this.channelSecret.substring(0, 6)}...)` : '❌ MISSING'}`);
-    this.logger.log(`LINE_LIFF_ID: ${this.liffId ? `SET (${this.liffId})` : '❌ MISSING'}`);
+    this.logger.log(`LINE_LIFF_ID: ${this.liffId ? `SET (${this.liffId})` : ' MISSING'}`);
 
     if (!this.channelSecret) {
       this.logger.error('LINE_CHANNEL_SECRET is missing! Webhook signature verification will fail.');
@@ -44,8 +44,7 @@ export class LineOAWebhookService {
       });
     }
 
-    // If rawBody is available (from NestJS rawBody: true), use it for signature verification
-    // Otherwise fallback to JSON.stringify (which might fail verification due to formatting)
+    
     const bodyBuffer = rawBody || Buffer.from(JSON.stringify(body), 'utf-8');
 
     // ตรวจสอบลายเซนต์
