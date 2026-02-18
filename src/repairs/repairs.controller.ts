@@ -18,6 +18,7 @@ import {
   UseGuards,
   ForbiddenException,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { RepairsService } from './repairs.service';
 import { CreateRepairTicketDto } from './dto/create-repair-ticket.dto';
@@ -47,6 +48,7 @@ export class RepairsController {
   ===================================================== */
 
   @SetMetadata('isPublic', true)
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // Stricter: 5 requests per minute for public form
   @Post('liff/create')
   @UseInterceptors(FilesInterceptor('files', 3))
   async createFromLiff(
@@ -55,19 +57,23 @@ export class RepairsController {
     @UploadedFiles() files?: Express.Multer.File[],
   ) {
     try {
+      // Sanitize all string inputs to prevent XSS
+      const sanitize = (str: string | undefined): string =>
+        str ? str.replace(/<[^>]*>/g, '').trim() : '';
+
       const dto = new CreateRepairTicketDto();
 
-      dto.reporterName = body.reporterName || 'ไม่ได้ระบุ';
-      dto.reporterDepartment = body.reporterDepartment;
-      dto.reporterPhone = body.reporterPhone;
-      dto.location = body.location || 'ไม่ได้ระบุ';
+      dto.reporterName = sanitize(body.reporterName) || 'ไม่ได้ระบุ';
+      dto.reporterDepartment = sanitize(body.reporterDepartment);
+      dto.reporterPhone = sanitize(body.reporterPhone);
+      dto.location = sanitize(body.location) || 'ไม่ได้ระบุ';
 
       // Smart Title Handling:
       // Since the frontend now sends the full description as the title,
       // we check if they are identical. If so, and it's long, we truncate the title
       // to keep the dashboard clean.
-      const rawTitle = body.problemTitle || body.problemDescription || 'ไม่มีหัวข้อ';
-      const rawDescription = body.problemDescription || body.problemTitle || '';
+      const rawTitle = sanitize(body.problemTitle) || sanitize(body.problemDescription) || 'ไม่มีหัวข้อ';
+      const rawDescription = sanitize(body.problemDescription) || sanitize(body.problemTitle) || '';
 
       if (rawTitle === rawDescription && rawTitle.length > 100) {
         dto.problemTitle = rawTitle.substring(0, 100) + '...';
@@ -90,7 +96,7 @@ export class RepairsController {
         ? body.urgency
         : UrgencyLevel.NORMAL;
 
-      dto.problemDescription = body.problemDescription || '';
+      dto.problemDescription = rawDescription;
 
       const user = await this.usersService.getOrCreateUserFromLine(
         dto.reporterLineId!,
@@ -98,17 +104,11 @@ export class RepairsController {
         body.pictureUrl,
       );
 
-      // Log for debugging LINE notification
-      this.logger.log(`LIFF Create - lineUserId from body: ${body.lineUserId || 'NONE'}`);
-      this.logger.log(`LIFF Create - reporterLineId: ${dto.reporterLineId}`);
-
       // Create ticket with lineUserId for direct LINE notifications
-      // Pass lineUserId separately for direct notification linking
       return await this.repairsService.create(user.id, dto, files, body.lineUserId);
     } catch (error: any) {
       this.logger.error(`LIFF Create Error: ${error.message}`, error.stack);
       
-      // Return more specific error message if available and safe
       const msg = error.response?.message || error.message || 'สร้างรายการแจ้งซ่อมไม่สำเร็จ';
       
       throw new HttpException(
@@ -116,7 +116,6 @@ export class RepairsController {
           statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
           message: msg,
           error: 'Internal Server Error',
-          debug: error.message // Include debug info locally (remove for strict prod)
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
