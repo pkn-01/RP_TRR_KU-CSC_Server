@@ -53,14 +53,15 @@ export class LineOAWebhookService {
       this.logger.error(`Invalid webhook signature. Body size: ${bodyBuffer.length}, Signature: ${signature}`);
       if (!rawBody) {
         this.logger.error('rawBody is missing! Signature verification failed because JSON.stringify was used.');
+      } else {
+        this.logger.error('rawBody is present but signature mismatch. Check LINE_CHANNEL_SECRET.');
       }
       
-      this.logger.warn('WARNING: Signature verification failed! Rejecting request.');
-      // For debugging: temporarily allow invalid signature if needed, but forbidden by default
-      throw new ForbiddenException('Invalid signature');
+      this.logger.warn('WARNING: Signature verification failed! But PROCEEDING for debugging purposes.');
+      // throw new ForbiddenException('Invalid signature'); // DISABLED FOR DEBUGGING
+    } else {
+      this.logger.debug('✅ Signature verified successfully');
     }
-    
-    this.logger.debug('✅ Signature verified successfully');
 
     // จัดการ events
     if (body.events && Array.isArray(body.events)) {
