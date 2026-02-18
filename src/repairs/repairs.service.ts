@@ -500,6 +500,28 @@ export class RepairsService {
           }
         }
 
+        // Notify technicians when job is COMPLETED
+        if (dto.status === 'COMPLETED' && originalTicket && originalTicket.status !== 'COMPLETED') {
+           const assignees = await this.prisma.repairTicketAssignee.findMany({
+             where: { repairTicketId: id },
+             include: { user: true }
+           });
+
+           for (const assignee of assignees) {
+              await this.lineNotificationService.notifyTechnicianJobCompletion(assignee.userId, {
+                ticketCode: ticket.ticketCode,
+                ticketId: ticket.id,
+                problemTitle: ticket.problemTitle,
+                reporterName: ticket.reporterName,
+                department: ticket.reporterDepartment || undefined,
+                location: ticket.location,
+                completedAt: ticket.completedAt || new Date(),
+                completionNote: dto.completionReport || dto.notes,
+              });
+              this.logger.log(`Notified technician ${assignee.userId} for completion: ${ticket.ticketCode}`);
+           }
+        }
+
         // Notify reporter on status change or assignment
         // Now include 'ASSIGNED' status or assignee changes to notify reporter
         if (dto.status !== undefined && originalTicket && (dto.status !== originalTicket.status || dto.assigneeIds !== undefined)) {

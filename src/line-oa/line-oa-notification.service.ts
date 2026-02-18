@@ -197,6 +197,47 @@ export class LineOANotificationService {
   }
 
   /* =======================
+     NOTIFY TECHNICIAN (JOB COMPLETED)
+  ====================== */
+
+  async notifyTechnicianJobCompletion(
+    technicianId: number,
+    payload: {
+      ticketCode: string;
+      ticketId?: number;
+      problemTitle: string;
+      reporterName: string;
+      department?: string;
+      location?: string;
+      completedAt: Date;
+      completionNote?: string;
+    }
+  ) {
+    try {
+      const lineLink = await this.getVerifiedLineLink(technicianId);
+      if (!lineLink) return { success: false, reason: 'Technician not linked to LINE' };
+
+      const flexMessage = {
+        type: 'flex' as const,
+        altText: `ปิดงานซ่อม ${payload.ticketCode} เรียบร้อยแล้ว`,
+        contents: this.createTechnicianCompletionFlex(payload) as any,
+      };
+
+      await this.lineOAService.sendMessage(lineLink.lineUserId!, flexMessage);
+      await this.saveNotificationLog(lineLink.lineUserId!, {
+        type: 'REPAIR_TICKET_COMPLETED',
+        title: 'ปิดงานสำเร็จ',
+        message: `${payload.ticketCode}: ${payload.problemTitle}`,
+      }, NotificationStatus.SENT);
+
+      return { success: true };
+    } catch (error) {
+      this.logger.error(error.message);
+      return { success: false };
+    }
+  }
+
+  /* =======================
      STATUS UPDATE → REPORTER
   ======================= */
 
@@ -771,6 +812,142 @@ export class LineOANotificationService {
             margin: actionButtons.length > 0 ? 'md' : 'none',
             contents: [
               { type: 'text', text: `${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
+              { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: COLORS.SUBTLE, align: 'end' },
+            ],
+          },
+        ],
+      },
+      styles: {
+        footer: { separator: true, separatorColor: COLORS.BORDER },
+      },
+    };
+  }
+
+  private createTechnicianCompletionFlex(payload: any) {
+    const formattedDate = new Intl.DateTimeFormat('th-TH', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+      timeZone: 'Asia/Bangkok',
+    }).format(payload.completedAt || new Date());
+
+    const bodyContents: any[] = [
+      // ── Problem Title ──
+      {
+        type: 'box', layout: 'vertical',
+        spacing: 'xs',
+        contents: [
+          { type: 'text', text: 'งานซ่อม', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+          { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: COLORS.VALUE, wrap: true },
+        ],
+      },
+      // ── Info Card ──
+      {
+        type: 'box', layout: 'vertical',
+        backgroundColor: COLORS.SECTION_BG,
+        paddingAll: '14px',
+        cornerRadius: 'lg',
+        margin: 'lg',
+        spacing: 'sm',
+        contents: [
+          this.createInfoRow('', 'ผู้แจ้ง', payload.reporterName, true),
+          ...(payload.department ? [this.createInfoRow('', 'แผนก', payload.department)] : []),
+          ...(payload.location ? [this.createInfoRow('', 'สถานที่', payload.location)] : []),
+        ],
+      },
+      // ── Completion Note ──
+      ...(payload.completionNote ? [{
+        type: 'box', layout: 'vertical',
+        backgroundColor: '#ECFDF5', // Light Green
+        paddingAll: '12px',
+        cornerRadius: 'md',
+        margin: 'md',
+        borderColor: '#6EE7B740',
+        borderWidth: '1px',
+        contents: [
+          { type: 'text', text: 'รายละเอียดการปิดงาน', size: 'xxs', color: '#047857', weight: 'bold' },
+          { type: 'text', text: payload.completionNote, size: 'sm', color: '#065F46', wrap: true, margin: 'xs' },
+        ],
+      }] : []),
+    ];
+
+    // Build action buttons
+    let frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc.vercel.app';
+    try {
+      frontendUrl = new URL(frontendUrl).origin;
+    } catch (e) {
+      // invalid URL
+    }
+    
+    // View Ticket Button
+    const actionButtons: any[] = [];
+    if (payload.ticketId) {
+      actionButtons.push({
+        type: 'button',
+        action: {
+          type: 'uri',
+          label: 'ดูรายละเอียด',
+          uri: `${frontendUrl}/login/admin?ticketId=${payload.ticketId}`,
+        },
+        style: 'primary',
+        color: COLORS.SUCCESS, // Green button for completion
+        height: 'sm',
+      });
+    }
+
+    return {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'horizontal',
+        backgroundColor: COLORS.HEADER_DARK,
+        paddingAll: '18px',
+        contents: [
+          {
+            type: 'box', layout: 'vertical', flex: 1,
+            contents: [
+              { type: 'text', text: 'ปิดงานเรียบร้อย', color: '#FFFFFF', weight: 'bold', size: 'md' },
+              { type: 'text', text: payload.ticketCode, color: '#94A3B8', size: 'sm', margin: 'sm' },
+            ],
+          },
+          {
+            type: 'box', layout: 'vertical',
+            backgroundColor: COLORS.SUCCESS,
+            cornerRadius: 'xl',
+            paddingAll: '6px', paddingStart: '12px', paddingEnd: '12px',
+            justifyContent: 'center', height: '28px',
+            contents: [
+              { type: 'text', text: 'SUCCESS', color: '#FFFFFF', size: 'xxs', weight: 'bold' },
+            ],
+          },
+        ],
+      },
+      body: {
+        type: 'box', layout: 'vertical',
+        paddingAll: '20px',
+        spacing: 'none',
+        backgroundColor: COLORS.CARD_BG,
+        contents: bodyContents,
+      },
+      footer: {
+        type: 'box', layout: 'vertical',
+        paddingAll: '14px',
+        backgroundColor: COLORS.FOOTER_BG,
+        spacing: 'sm',
+        contents: [
+          // Action buttons row
+          ...(actionButtons.length > 0 ? [{
+            type: 'box', layout: 'horizontal',
+            spacing: 'sm',
+            contents: actionButtons,
+          }] : []),
+          // Date and system label
+          {
+            type: 'box', layout: 'horizontal',
+            justifyContent: 'space-between',
+            margin: actionButtons.length > 0 ? 'md' : 'none',
+            contents: [
+              { type: 'text', text: `เสร็จสิ้นเมื่อ ${formattedDate}`, size: 'xxs', color: COLORS.SUBTLE },
               { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: COLORS.SUBTLE, align: 'end' },
             ],
           },
