@@ -10,6 +10,7 @@ import {
   Req,
   RawBodyRequest,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { LineOAService } from './line-oa.service';
 import { LineOALinkingService } from './line-oa-linking.service';
@@ -30,6 +31,7 @@ export class LineOAController {
    * LINE Webhook Endpoint
    */
   @Public()
+  @SkipThrottle()
   @Post('webhook')
   @HttpCode(200)
   async handleWebhook(
