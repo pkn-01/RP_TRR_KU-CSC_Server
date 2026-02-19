@@ -355,12 +355,13 @@ export class LineOAWebhookService {
   }
 
   /**
-   * Handle "Create Repair" postback - เปิด LIFF form
+   * Handle "Create Repair" postback - เปิด LIFF form พร้อม lineUserId
    */
   private async handleCreateRepairPostback(lineUserId: string, client: line.Client, replyToken?: string) {
-    const liffUrl = `https://liff.line.me/${this.liffId}?action=create`;
+    const frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc-2026.vercel.app';
+    const repairFormUrl = `${frontendUrl}/repairs/liff/form?lineUserId=${lineUserId}`;
 
-    this.logger.log(`Opening LIFF form for user: ${lineUserId}, URL: ${liffUrl}`);
+    this.logger.log(`Opening repair form for user: ${lineUserId}, URL: ${repairFormUrl}`);
 
     const message: line.Message = {
       type: 'template',
@@ -372,7 +373,7 @@ export class LineOAWebhookService {
           {
             type: 'uri',
             label: 'เปิดฟอร์มแจ้งซ่อม',
-            uri: liffUrl,
+            uri: repairFormUrl,
           },
         ],
       },
