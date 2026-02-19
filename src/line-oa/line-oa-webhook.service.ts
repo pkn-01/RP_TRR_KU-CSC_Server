@@ -358,8 +358,6 @@ export class LineOAWebhookService {
    * Handle "Create Repair" postback - เปิด LIFF form
    */
   private async handleCreateRepairPostback(lineUserId: string, client: line.Client, replyToken?: string) {
-    // Use proper LIFF URL format - LIFF page will get userId from liff.getProfile()
-    // action=create tells the LIFF page to redirect to the form
     const liffUrl = `https://liff.line.me/${this.liffId}?action=create`;
 
     this.logger.log(`Opening LIFF form for user: ${lineUserId}, URL: ${liffUrl}`);
@@ -369,7 +367,7 @@ export class LineOAWebhookService {
       altText: 'เปิดฟอร์มแจ้งซ่อม',
       template: {
         type: 'buttons',
-        text: '🔧 คลิกเพื่อเปิดฟอร์มแจ้งซ่อม',
+        text: 'คลิกเพื่อเปิดฟอร์มแจ้งซ่อม',
         actions: [
           {
             type: 'uri',
