@@ -835,61 +835,78 @@ export class LineOANotificationService {
     }).format(payload.completedAt || new Date());
 
     const bodyContents: any[] = [
-      // ── Problem Title ──
+      // ── Problem Image (Hero) ──
+      ...(payload.problemImageUrl ? [{
+        type: 'image',
+        url: payload.problemImageUrl,
+        size: 'full',
+        aspectRatio: '20:13',
+        aspectMode: 'cover',
+      }] : []),
+
+      // ── Content Container (with padding) ──
       {
         type: 'box', layout: 'vertical',
-        spacing: 'sm', margin: 'md',
+        paddingAll: '20px',
+        spacing: 'none',
         contents: [
-          { type: 'text', text: 'งานซ่อม', size: 'xs', color: COLORS.LABEL, weight: 'bold' },
-          { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: COLORS.VALUE, wrap: true },
-        ],
-      },
-      // ── Reporter Info (Premium Layout) ──
-      {
-        type: 'box', layout: 'horizontal',
-        margin: 'lg', spacing: 'md',
-        alignItems: 'center',
-        contents: [
-          // User Icon (Standard Fallback)
-          {
-             type: "box", layout: "vertical", width: "40px", height: "40px", cornerRadius: "20px", backgroundColor: "#E2E8F0", justifyContent: "center", alignItems: "center", flex: 0,
-             contents: [{ type: "text", text: "👤", size: "lg" }]
-          },
-          // Name & Dept
+          // ── Problem Title ──
           {
             type: 'box', layout: 'vertical',
-            flex: 1,
+            spacing: 'sm', margin: payload.problemImageUrl ? 'md' : 'none',
             contents: [
-              { type: 'text', text: payload.reporterName, size: 'sm', weight: 'bold', color: '#1E293B' },
-              { type: 'text', text: payload.department || 'ไม่ระบุแผนก', size: 'xs', color: '#64748B' }
+              { type: 'text', text: 'งานซ่อม', size: 'xs', color: COLORS.LABEL, weight: 'bold' },
+              { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: COLORS.VALUE, wrap: true },
+            ],
+          },
+          // ── Reporter Info (Premium Layout) ──
+          {
+            type: 'box', layout: 'horizontal',
+            margin: 'lg', spacing: 'md',
+            alignItems: 'center',
+            contents: [
+              // User Icon (Standard Fallback)
+              {
+                 type: "box", layout: "vertical", width: "40px", height: "40px", cornerRadius: "20px", backgroundColor: "#E2E8F0", justifyContent: "center", alignItems: "center", flex: 0,
+                 contents: [{ type: "text", text: "👤", size: "lg" }]
+              },
+              // Name & Dept
+              {
+                type: 'box', layout: 'vertical',
+                flex: 1,
+                contents: [
+                  { type: 'text', text: payload.reporterName, size: 'sm', weight: 'bold', color: '#1E293B' },
+                  { type: 'text', text: payload.department || 'ไม่ระบุแผนก', size: 'xs', color: '#64748B' }
+                ]
+              }
             ]
-          }
+          },
+          // ── Location ──
+          {
+            type: 'box', layout: 'vertical',
+            margin: 'md', spacing: 'xs',
+            contents: [
+              { type: 'text', text: 'สถานที่', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+              { type: 'text', text: payload.location || '-', size: 'sm', color: COLORS.VALUE, wrap: true }
+            ]
+          },
+          // ── Completion Note ──
+          ...(payload.completionNote ? [{
+            type: 'box', layout: 'vertical',
+            backgroundColor: '#F0FDF4', // Light Green (Premium look)
+            paddingAll: '14px',
+            cornerRadius: 'lg',
+            margin: 'lg',
+            borderColor: '#BBF7D0',
+            borderWidth: '1px',
+            spacing: 'sm',
+            contents: [
+              { type: 'text', text: 'รายละเอียดการปิดงาน', size: 'xs', color: '#15803D', weight: 'bold' },
+              { type: 'text', text: payload.completionNote, size: 'sm', color: '#166534', wrap: true },
+            ],
+          }] : []),
         ]
-      },
-      // ── Location ──
-      {
-        type: 'box', layout: 'vertical',
-        margin: 'md', spacing: 'xs',
-        contents: [
-          { type: 'text', text: 'สถานที่', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
-          { type: 'text', text: payload.location || '-', size: 'sm', color: COLORS.VALUE, wrap: true }
-        ]
-      },
-      // ── Completion Note ──
-      ...(payload.completionNote ? [{
-        type: 'box', layout: 'vertical',
-        backgroundColor: '#F0FDF4', // Light Green (Premium look)
-        paddingAll: '14px',
-        cornerRadius: 'lg',
-        margin: 'lg',
-        borderColor: '#BBF7D0',
-        borderWidth: '1px',
-        spacing: 'sm',
-        contents: [
-          { type: 'text', text: 'รายละเอียดการปิดงาน', size: 'xs', color: '#15803D', weight: 'bold' },
-          { type: 'text', text: payload.completionNote, size: 'sm', color: '#166534', wrap: true },
-        ],
-      }] : []),
+      }
     ];
 
     // Build action buttons
@@ -944,19 +961,9 @@ export class LineOANotificationService {
           },
         ],
       },
-      // Hero Image (Problem Image)
-      ...(payload.problemImageUrl ? {
-        hero: {
-          type: 'image',
-          url: payload.problemImageUrl,
-          size: 'full',
-          aspectRatio: '20:13',
-          aspectMode: 'cover',
-        }
-      } : {}),
       body: {
         type: 'box', layout: 'vertical',
-        paddingAll: '20px',
+        paddingAll: '0px', // Remove padding to allow full-width image
         spacing: 'none',
         backgroundColor: '#FFFFFF',
         contents: bodyContents,
