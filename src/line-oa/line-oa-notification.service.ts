@@ -1179,9 +1179,7 @@ export class LineOANotificationService {
       ASSIGNED: { color: COLORS.INFO, text: 'มอบหมายแล้ว' },
       IN_PROGRESS: { color: COLORS.INFO, text: 'กำลังดำเนินการ' },
       COMPLETED: { color: COLORS.SUCCESS, text: 'เสร็จสิ้น' },
-      WAITING_PARTS: { color: COLORS.WARNING, text: 'รออะไหล่' },
-      WAITING_USER: { color: COLORS.WARNING, text: 'รอข้อมูลจากผู้แจ้ง' },
-      CANCELLED: { color: COLORS.SECONDARY, text: 'ยกเลิก' },
+      CANCELLED: { color: '#EF4444', text: 'ยกเลิก' },
     }[status] || { color: COLORS.PRIMARY, text: status });
   }
 }
