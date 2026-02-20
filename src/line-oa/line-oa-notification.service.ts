@@ -211,28 +211,19 @@ export class LineOANotificationService {
       location?: string;
       completedAt: Date;
       completionNote?: string;
-      reporterLineUserId?: string; // Added to fetch profile image
+      reporterLineUserId?: string; // Removed (unused)
+      problemImageUrl?: string; // Added to show problem image
     }
   ) {
     try {
       const lineLink = await this.getVerifiedLineLink(technicianId);
       if (!lineLink) return { success: false, reason: 'Technician not linked to LINE' };
 
-      let reporterPictureUrl: string | undefined;
-      // Fetch reporter profile image if LineUserId is available
-      if (payload.reporterLineUserId) {
-        const profile = await this.lineOAService.getProfile(payload.reporterLineUserId);
-        if (profile?.pictureUrl) {
-          reporterPictureUrl = profile.pictureUrl;
-        }
-      }
-
       const flexMessage = {
         type: 'flex' as const,
         altText: `ปิดงานซ่อม ${payload.ticketCode} เรียบร้อยแล้ว`,
         contents: this.createTechnicianCompletionFlex({
           ...payload,
-          reporterPictureUrl,
         }) as any,
       };
 
@@ -859,20 +850,11 @@ export class LineOANotificationService {
         margin: 'lg', spacing: 'md',
         alignItems: 'center',
         contents: [
-          // Avatar (if available) -> Using circle image
-          ...(payload.reporterPictureUrl ? [{
-            type: 'image',
-            url: payload.reporterPictureUrl,
-            size: '40px',
-            aspectRatio: '1:1',
-            aspectMode: 'cover',
-            cornerRadius: '40px',
-            flex: 0
-          }] : [{
-             // Fallback icon if no image
+          // User Icon (Standard Fallback)
+          {
              type: "box", layout: "vertical", width: "40px", height: "40px", cornerRadius: "20px", backgroundColor: "#E2E8F0", justifyContent: "center", alignItems: "center", flex: 0,
              contents: [{ type: "text", text: "👤", size: "lg" }]
-          }]),
+          },
           // Name & Dept
           {
             type: 'box', layout: 'vertical',
@@ -962,6 +944,16 @@ export class LineOANotificationService {
           },
         ],
       },
+      // Hero Image (Problem Image)
+      ...(payload.problemImageUrl ? {
+        hero: {
+          type: 'image',
+          url: payload.problemImageUrl,
+          size: 'full',
+          aspectRatio: '20:13',
+          aspectMode: 'cover',
+        }
+      } : {}),
       body: {
         type: 'box', layout: 'vertical',
         paddingAll: '20px',
