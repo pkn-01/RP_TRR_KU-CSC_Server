@@ -835,79 +835,48 @@ export class LineOANotificationService {
     }).format(payload.completedAt || new Date());
 
     const bodyContents: any[] = [
-      // ── Problem Image (Hero) ──
-      ...(payload.problemImageUrl ? [{
-        type: 'image',
-        url: payload.problemImageUrl,
-        size: 'full',
-        aspectRatio: '20:13',
-        aspectMode: 'cover',
-      }] : []),
-
-      // ── Content Container (with padding) ──
+      // ── Problem Title ──
       {
         type: 'box', layout: 'vertical',
-        paddingAll: '20px',
-        spacing: 'none',
+        spacing: 'xs',
         contents: [
-          // ── Problem Title ──
-          {
-            type: 'box', layout: 'vertical',
-            spacing: 'sm', margin: payload.problemImageUrl ? 'md' : 'none',
-            contents: [
-              { type: 'text', text: 'งานซ่อม', size: 'xs', color: COLORS.LABEL, weight: 'bold' },
-              { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: COLORS.VALUE, wrap: true },
-            ],
-          },
-          // ── Reporter Info (Premium Layout) ──
-          {
-            type: 'box', layout: 'horizontal',
-            margin: 'lg', spacing: 'md',
-            alignItems: 'center',
-            contents: [
-              // User Icon (Standard Fallback)
-              {
-                 type: "box", layout: "vertical", width: "40px", height: "40px", cornerRadius: "20px", backgroundColor: "#E2E8F0", justifyContent: "center", alignItems: "center", flex: 0,
-                 contents: [{ type: "text", text: "👤", size: "lg" }]
-              },
-              // Name & Dept
-              {
-                type: 'box', layout: 'vertical',
-                flex: 1,
-                contents: [
-                  { type: 'text', text: payload.reporterName, size: 'sm', weight: 'bold', color: '#1E293B' },
-                  { type: 'text', text: payload.department || 'ไม่ระบุแผนก', size: 'xs', color: '#64748B' }
-                ]
-              }
-            ]
-          },
-          // ── Location ──
-          {
-            type: 'box', layout: 'vertical',
-            margin: 'md', spacing: 'xs',
-            contents: [
-              { type: 'text', text: 'สถานที่', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
-              { type: 'text', text: payload.location || '-', size: 'sm', color: COLORS.VALUE, wrap: true }
-            ]
-          },
-          // ── Completion Note ──
-          ...(payload.completionNote ? [{
-            type: 'box', layout: 'vertical',
-            backgroundColor: '#F0FDF4', // Light Green (Premium look)
-            paddingAll: '14px',
-            cornerRadius: 'lg',
-            margin: 'lg',
-            borderColor: '#BBF7D0',
-            borderWidth: '1px',
-            spacing: 'sm',
-            contents: [
-              { type: 'text', text: 'รายละเอียดการปิดงาน', size: 'xs', color: '#15803D', weight: 'bold' },
-              { type: 'text', text: payload.completionNote, size: 'sm', color: '#166534', wrap: true },
-            ],
-          }] : []),
-        ]
-      }
+          { type: 'text', text: 'งานซ่อม', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+          { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: COLORS.VALUE, wrap: true },
+        ],
+      },
+      // ── Info Card (Reporter / Dept / Location) ──
+      {
+        type: 'box', layout: 'vertical',
+        backgroundColor: COLORS.SECTION_BG,
+        paddingAll: '14px',
+        cornerRadius: 'lg',
+        margin: 'lg',
+        spacing: 'sm',
+        contents: [
+          this.createInfoRow('', 'ผู้แจ้ง', payload.reporterName, true),
+          this.createInfoRow('', 'แผนก', payload.department || 'ไม่ระบุแผนก'),
+          this.createInfoRow('', 'สถานที่', payload.location || '-'),
+        ],
+      },
     ];
+
+    // ── Completion Note ──
+    if (payload.completionNote) {
+      bodyContents.push({
+        type: 'box', layout: 'vertical',
+        backgroundColor: '#F0FDF4',
+        paddingAll: '14px',
+        cornerRadius: 'lg',
+        margin: 'md',
+        borderColor: '#BBF7D0',
+        borderWidth: '1px',
+        spacing: 'sm',
+        contents: [
+          { type: 'text', text: 'รายละเอียดการปิดงาน', size: 'xxs', color: '#15803D', weight: 'bold' },
+          { type: 'text', text: payload.completionNote, size: 'sm', color: '#166534', wrap: true },
+        ],
+      });
+    }
 
     // Build action buttons
     let frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc.vercel.app';
@@ -928,7 +897,7 @@ export class LineOANotificationService {
           uri: `${frontendUrl}/login/admin?ticketId=${payload.ticketId}`,
         },
         style: 'primary',
-        color: '#059669', // Emerald 600
+        color: '#059669',
         height: 'sm',
       });
     }
@@ -940,7 +909,7 @@ export class LineOANotificationService {
         type: 'box',
         layout: 'horizontal',
         backgroundColor: COLORS.HEADER_DARK,
-        paddingAll: '20px',
+        paddingAll: '18px',
         contents: [
           {
             type: 'box', layout: 'vertical', flex: 1,
@@ -951,7 +920,7 @@ export class LineOANotificationService {
           },
           {
             type: 'box', layout: 'vertical',
-            backgroundColor: '#10B981', // Emerald 500
+            backgroundColor: '#10B981',
             cornerRadius: 'xl',
             paddingAll: '6px', paddingStart: '12px', paddingEnd: '12px',
             justifyContent: 'center', height: '28px',
@@ -961,17 +930,27 @@ export class LineOANotificationService {
           },
         ],
       },
+      // Hero image (problem photo from reporter)
+      ...(payload.problemImageUrl ? {
+        hero: {
+          type: 'image',
+          url: payload.problemImageUrl,
+          size: 'full',
+          aspectRatio: '20:13',
+          aspectMode: 'cover',
+        },
+      } : {}),
       body: {
         type: 'box', layout: 'vertical',
-        paddingAll: '0px', // Remove padding to allow full-width image
+        paddingAll: '20px',
         spacing: 'none',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: COLORS.CARD_BG,
         contents: bodyContents,
       },
       footer: {
         type: 'box', layout: 'vertical',
-        paddingAll: '16px',
-        backgroundColor: '#F8FAFC', // Slate 50
+        paddingAll: '14px',
+        backgroundColor: COLORS.FOOTER_BG,
         spacing: 'sm',
         contents: [
           // Action buttons row
@@ -993,7 +972,7 @@ export class LineOANotificationService {
         ],
       },
       styles: {
-        footer: { separator: true, separatorColor: '#E2E8F0' },
+        footer: { separator: true, separatorColor: COLORS.BORDER },
       },
     };
   }

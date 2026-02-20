@@ -512,6 +512,13 @@ export class RepairsService {
              include: { user: true }
            });
 
+           // Get first attachment image for the completion notification
+           const ticketForImage = await this.prisma.repairTicket.findUnique({
+             where: { id },
+             include: { attachments: { orderBy: { id: 'asc' }, take: 1 } },
+           });
+           const problemImageUrl = ticketForImage?.attachments?.[0]?.fileUrl;
+
            for (const assignee of assignees) {
               await this.lineNotificationService.notifyTechnicianJobCompletion(assignee.userId, {
                 ticketCode: ticket.ticketCode,
@@ -522,7 +529,7 @@ export class RepairsService {
                 location: ticket.location,
                 completedAt: ticket.completedAt || new Date(),
                 completionNote: dto.completionReport || dto.notes,
-                reporterLineUserId: ticket.reporterLineUserId || undefined,
+                problemImageUrl,
               });
               this.logger.log(`Notified technician ${assignee.userId} for completion: ${ticket.ticketCode}`);
            }
