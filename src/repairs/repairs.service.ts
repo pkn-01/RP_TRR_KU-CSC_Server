@@ -517,6 +517,7 @@ export class RepairsService {
                 location: ticket.location,
                 completedAt: ticket.completedAt || new Date(),
                 completionNote: dto.completionReport || dto.notes,
+                reporterLineUserId: ticket.reporterLineUserId || undefined,
               });
               this.logger.log(`Notified technician ${assignee.userId} for completion: ${ticket.ticketCode}`);
            }

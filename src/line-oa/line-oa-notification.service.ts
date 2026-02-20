@@ -211,16 +211,29 @@ export class LineOANotificationService {
       location?: string;
       completedAt: Date;
       completionNote?: string;
+      reporterLineUserId?: string; // Added to fetch profile image
     }
   ) {
     try {
       const lineLink = await this.getVerifiedLineLink(technicianId);
       if (!lineLink) return { success: false, reason: 'Technician not linked to LINE' };
 
+      let reporterPictureUrl: string | undefined;
+      // Fetch reporter profile image if LineUserId is available
+      if (payload.reporterLineUserId) {
+        const profile = await this.lineOAService.getProfile(payload.reporterLineUserId);
+        if (profile?.pictureUrl) {
+          reporterPictureUrl = profile.pictureUrl;
+        }
+      }
+
       const flexMessage = {
         type: 'flex' as const,
         altText: `ปิดงานซ่อม ${payload.ticketCode} เรียบร้อยแล้ว`,
-        contents: this.createTechnicianCompletionFlex(payload) as any,
+        contents: this.createTechnicianCompletionFlex({
+          ...payload,
+          reporterPictureUrl,
+        }) as any,
       };
 
       await this.lineOAService.sendMessage(lineLink.lineUserId!, flexMessage);
@@ -834,38 +847,65 @@ export class LineOANotificationService {
       // ── Problem Title ──
       {
         type: 'box', layout: 'vertical',
-        spacing: 'xs',
+        spacing: 'sm', margin: 'md',
         contents: [
-          { type: 'text', text: 'งานซ่อม', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+          { type: 'text', text: 'งานซ่อม', size: 'xs', color: COLORS.LABEL, weight: 'bold' },
           { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: COLORS.VALUE, wrap: true },
         ],
       },
-      // ── Info Card ──
+      // ── Reporter Info (Premium Layout) ──
+      {
+        type: 'box', layout: 'horizontal',
+        margin: 'lg', spacing: 'md',
+        alignItems: 'center',
+        contents: [
+          // Avatar (if available) -> Using circle image
+          ...(payload.reporterPictureUrl ? [{
+            type: 'image',
+            url: payload.reporterPictureUrl,
+            size: '40px',
+            aspectRatio: '1:1',
+            aspectMode: 'cover',
+            cornerRadius: '40px',
+            flex: 0
+          }] : [{
+             // Fallback icon if no image
+             type: "box", layout: "vertical", width: "40px", height: "40px", cornerRadius: "20px", backgroundColor: "#E2E8F0", justifyContent: "center", alignItems: "center", flex: 0,
+             contents: [{ type: "text", text: "👤", size: "lg" }]
+          }]),
+          // Name & Dept
+          {
+            type: 'box', layout: 'vertical',
+            flex: 1,
+            contents: [
+              { type: 'text', text: payload.reporterName, size: 'sm', weight: 'bold', color: '#1E293B' },
+              { type: 'text', text: payload.department || 'ไม่ระบุแผนก', size: 'xs', color: '#64748B' }
+            ]
+          }
+        ]
+      },
+      // ── Location ──
       {
         type: 'box', layout: 'vertical',
-        backgroundColor: COLORS.SECTION_BG,
-        paddingAll: '14px',
-        cornerRadius: 'lg',
-        margin: 'lg',
-        spacing: 'sm',
+        margin: 'md', spacing: 'xs',
         contents: [
-          this.createInfoRow('', 'ผู้แจ้ง', payload.reporterName, true),
-          ...(payload.department ? [this.createInfoRow('', 'แผนก', payload.department)] : []),
-          ...(payload.location ? [this.createInfoRow('', 'สถานที่', payload.location)] : []),
-        ],
+          { type: 'text', text: 'สถานที่', size: 'xxs', color: COLORS.LABEL, weight: 'bold' },
+          { type: 'text', text: payload.location || '-', size: 'sm', color: COLORS.VALUE, wrap: true }
+        ]
       },
       // ── Completion Note ──
       ...(payload.completionNote ? [{
         type: 'box', layout: 'vertical',
-        backgroundColor: '#ECFDF5', // Light Green
-        paddingAll: '12px',
-        cornerRadius: 'md',
-        margin: 'md',
-        borderColor: '#6EE7B740',
+        backgroundColor: '#F0FDF4', // Light Green (Premium look)
+        paddingAll: '14px',
+        cornerRadius: 'lg',
+        margin: 'lg',
+        borderColor: '#BBF7D0',
         borderWidth: '1px',
+        spacing: 'sm',
         contents: [
-          { type: 'text', text: 'รายละเอียดการปิดงาน', size: 'xxs', color: '#047857', weight: 'bold' },
-          { type: 'text', text: payload.completionNote, size: 'sm', color: '#065F46', wrap: true, margin: 'xs' },
+          { type: 'text', text: 'รายละเอียดการปิดงาน', size: 'xs', color: '#15803D', weight: 'bold' },
+          { type: 'text', text: payload.completionNote, size: 'sm', color: '#166534', wrap: true },
         ],
       }] : []),
     ];
@@ -889,7 +929,7 @@ export class LineOANotificationService {
           uri: `${frontendUrl}/login/admin?ticketId=${payload.ticketId}`,
         },
         style: 'primary',
-        color: COLORS.SUCCESS, // Green button for completion
+        color: '#059669', // Emerald 600
         height: 'sm',
       });
     }
@@ -901,23 +941,23 @@ export class LineOANotificationService {
         type: 'box',
         layout: 'horizontal',
         backgroundColor: COLORS.HEADER_DARK,
-        paddingAll: '18px',
+        paddingAll: '20px',
         contents: [
           {
             type: 'box', layout: 'vertical', flex: 1,
             contents: [
-              { type: 'text', text: 'ปิดงานเรียบร้อย', color: '#FFFFFF', weight: 'bold', size: 'md' },
+              { type: 'text', text: 'ปิดงานเรียบร้อย', color: '#FFFFFF', weight: 'bold', size: 'lg' },
               { type: 'text', text: payload.ticketCode, color: '#94A3B8', size: 'sm', margin: 'sm' },
             ],
           },
           {
             type: 'box', layout: 'vertical',
-            backgroundColor: COLORS.SUCCESS,
+            backgroundColor: '#10B981', // Emerald 500
             cornerRadius: 'xl',
             paddingAll: '6px', paddingStart: '12px', paddingEnd: '12px',
             justifyContent: 'center', height: '28px',
             contents: [
-              { type: 'text', text: 'SUCCESS', color: '#FFFFFF', size: 'xxs', weight: 'bold' },
+              { type: 'text', text: 'SUCCESS', color: '#FFFFFF', size: 'xs', weight: 'bold' },
             ],
           },
         ],
@@ -926,13 +966,13 @@ export class LineOANotificationService {
         type: 'box', layout: 'vertical',
         paddingAll: '20px',
         spacing: 'none',
-        backgroundColor: COLORS.CARD_BG,
+        backgroundColor: '#FFFFFF',
         contents: bodyContents,
       },
       footer: {
         type: 'box', layout: 'vertical',
-        paddingAll: '14px',
-        backgroundColor: COLORS.FOOTER_BG,
+        paddingAll: '16px',
+        backgroundColor: '#F8FAFC', // Slate 50
         spacing: 'sm',
         contents: [
           // Action buttons row
@@ -954,7 +994,7 @@ export class LineOANotificationService {
         ],
       },
       styles: {
-        footer: { separator: true, separatorColor: COLORS.BORDER },
+        footer: { separator: true, separatorColor: '#E2E8F0' },
       },
     };
   }

@@ -93,4 +93,20 @@ export class LineOAService {
       return false;
     }
   }
+
+  /**
+   * ดึงข้อมูลโปรไฟล์ผู้ใช้จาก LINE (Display Name, Picture URL)
+   */
+  async getProfile(lineUserId: string) {
+    try {
+      const profile = await this.lineClient.getProfile(lineUserId);
+      return {
+        displayName: profile.displayName,
+        pictureUrl: profile.pictureUrl,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get profile for ${lineUserId}:`, error);
+      return null;
+    }
+  }
 }
