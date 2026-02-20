@@ -925,19 +925,47 @@ export class LineOANotificationService {
             paddingAll: '6px', paddingStart: '12px', paddingEnd: '12px',
             justifyContent: 'center', height: '28px',
             contents: [
-              { type: 'text', text: 'SUCCESS', color: '#FFFFFF', size: 'xs', weight: 'bold' },
+              { type: 'text', text: 'เสร็จสิ้น', color: '#FFFFFF', size: 'xs', weight: 'bold' },
             ],
           },
         ],
       },
-      // Hero image (problem photo from reporter)
+      // Hero image with overlay text "เสร็จสิ้นแล้ว"
       ...(payload.problemImageUrl ? {
         hero: {
-          type: 'image',
-          url: payload.problemImageUrl,
-          size: 'full',
-          aspectRatio: '20:13',
-          aspectMode: 'cover',
+          type: 'box',
+          layout: 'vertical',
+          paddingAll: '0px',
+          contents: [
+            {
+              type: 'image',
+              url: payload.problemImageUrl,
+              size: 'full',
+              aspectRatio: '20:13',
+              aspectMode: 'cover',
+            },
+            // Overlay gradient + text
+            {
+              type: 'box',
+              layout: 'vertical',
+              position: 'absolute',
+              offsetBottom: '0px',
+              offsetStart: '0px',
+              offsetEnd: '0px',
+              background: {
+                type: 'linearGradient',
+                angle: '0deg',
+                startColor: '#000000AA',
+                endColor: '#00000000',
+              },
+              paddingAll: '16px',
+              justifyContent: 'flex-end',
+              height: '100%',
+              contents: [
+                { type: 'text', text: 'เสร็จสิ้นแล้ว', color: '#FFFFFF', size: 'xxl', weight: 'bold', align: 'center' },
+              ],
+            },
+          ],
         },
       } : {}),
       body: {
