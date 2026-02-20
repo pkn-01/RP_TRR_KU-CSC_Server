@@ -307,6 +307,11 @@ export class RepairsService {
       
       // Handle multi-assignee sync
       if (dto.assigneeIds !== undefined) {
+        // Ensure assigneeIds are numbers (fix for notification issue)
+        dto.assigneeIds = Array.isArray(dto.assigneeIds) 
+          ? dto.assigneeIds.map((id: any) => Number(id)) 
+          : [];
+
         // Delete all existing assignees and recreate
         await this.prisma.repairTicketAssignee.deleteMany({
           where: { repairTicketId: id },
