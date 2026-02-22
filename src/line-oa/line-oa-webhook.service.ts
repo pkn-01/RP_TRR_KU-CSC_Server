@@ -226,15 +226,14 @@ export class LineOAWebhookService {
    */
   private async handleRepairKeyword(lineUserId: string, client: line.Client, replyToken?: string) {
     try {
-      // User requested direct URL with lineUserId (bypass LIFF shortlink)
-      const frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc-2026.vercel.app';
-      const repairFormUrl = `${frontendUrl}/repairs/liff/form?lineUserId=${lineUserId}`;
+      // Use LIFF URL for secure authentication (LIFF SDK handles userId via profile)
+      const liffUrl = `https://liff.line.me/${this.liffId}`;
 
-      this.logger.log(`Sending repair form URL to ${lineUserId}: ${repairFormUrl}`);
+      this.logger.log(`Sending LIFF repair form URL to ${lineUserId}: ${liffUrl}`);
 
       const message: line.Message = {
         type: 'text',
-        text: `แจ้งซ่อมกดลิ้งนี้\n${repairFormUrl}`,
+        text: `แจ้งซ่อมกดลิ้งนี้\n${liffUrl}`,
       };
 
       if (replyToken) {
@@ -245,11 +244,11 @@ export class LineOAWebhookService {
     } catch (error: any) {
       this.logger.error(`Failed to handle repair keyword response: ${error.message}`, error);
       
-      // Fallback response if template fails (e.g., if LIFF URL is considered invalid)
+      // Fallback response if template fails
       if (replyToken) {
         await client.replyMessage(replyToken, {
           type: 'text',
-          text: `กรุณากดลิงก์เพื่อแจ้งซ่อม: https://liff.line.me/${this.liffId}?action=create`
+          text: `กรุณากดลิงก์เพื่อแจ้งซ่อม: https://liff.line.me/${this.liffId}`
         });
       }
     }
@@ -358,10 +357,10 @@ export class LineOAWebhookService {
    * Handle "Create Repair" postback - เปิด LIFF form พร้อม lineUserId
    */
   private async handleCreateRepairPostback(lineUserId: string, client: line.Client, replyToken?: string) {
-    const frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc-2026.vercel.app';
-    const repairFormUrl = `${frontendUrl}/repairs/liff/form?lineUserId=${lineUserId}`;
+    // Use LIFF URL for secure authentication (LIFF SDK handles userId via profile)
+    const liffUrl = `https://liff.line.me/${this.liffId}`;
 
-    this.logger.log(`Opening repair form for user: ${lineUserId}, URL: ${repairFormUrl}`);
+    this.logger.log(`Opening repair form for user: ${lineUserId}, URL: ${liffUrl}`);
 
     const message: line.Message = {
       type: 'template',
@@ -373,7 +372,7 @@ export class LineOAWebhookService {
           {
             type: 'uri',
             label: 'เปิดฟอร์มแจ้งซ่อม',
-            uri: repairFormUrl,
+            uri: liffUrl,
           },
         ],
       },

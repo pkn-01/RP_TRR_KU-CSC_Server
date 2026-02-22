@@ -81,10 +81,25 @@ export class RepairsController {
         dto.problemTitle = rawTitle;
       }
 
-      dto.reporterLineId =
-        body.reporterLineId && body.reporterLineId !== 'null'
-          ? body.reporterLineId
-          : 'Guest';
+      // SECURITY: Validate lineUserId format (LINE User IDs = U + 32 hex chars)
+      const lineUserIdRegex = /^U[0-9a-f]{32}$/;
+      const rawLineUserId = body.reporterLineId || body.lineUserId;
+      const validatedLineUserId = (rawLineUserId && lineUserIdRegex.test(rawLineUserId))
+        ? rawLineUserId
+        : undefined;
+
+      if (rawLineUserId && !validatedLineUserId) {
+        this.logger.warn(`SECURITY: Invalid lineUserId format rejected: ${rawLineUserId}`);
+      }
+
+      dto.reporterLineId = validatedLineUserId || 'Guest';
+
+      // SECURITY: Validate phone format (10 digits starting with 0)
+      const phoneRegex = /^0\d{9}$/;
+      if (dto.reporterPhone && !phoneRegex.test(dto.reporterPhone)) {
+        this.logger.warn(`Invalid phone format rejected: ${dto.reporterPhone}`);
+        dto.reporterPhone = '';
+      }
 
       dto.problemCategory = Object.values(ProblemCategory).includes(
         body.problemCategory,
@@ -104,8 +119,8 @@ export class RepairsController {
         body.pictureUrl,
       );
 
-      // Create ticket with lineUserId for direct LINE notifications
-      return await this.repairsService.create(user.id, dto, files, body.lineUserId);
+      // Create ticket with validated lineUserId for direct LINE notifications
+      return await this.repairsService.create(user.id, dto, files, validatedLineUserId);
     } catch (error: any) {
       this.logger.error(`LIFF Create Error: ${error.message}`, error.stack);
       
