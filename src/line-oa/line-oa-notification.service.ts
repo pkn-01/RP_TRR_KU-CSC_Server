@@ -845,37 +845,11 @@ export class LineOANotificationService {
         ],
       },
       hero: payload.problemImageUrl ? {
-        type: 'box',
-        layout: 'vertical',
-        contents: [
-          {
-            type: 'image',
-            url: payload.problemImageUrl,
-            size: 'full',
-            aspectRatio: '20:13',
-            aspectMode: 'cover',
-          },
-          {
-            type: 'box',
-            layout: 'vertical',
-            position: 'absolute',
-            offsetBottom: '0px',
-            offsetStart: '0px',
-            offsetEnd: '0px',
-            background: {
-              type: 'linearGradient',
-              angle: '0deg',
-              startColor: '#000000AA',
-              endColor: '#00000000',
-            },
-            paddingAll: '16px',
-            justifyContent: 'flex-end',
-            height: '100%',
-            contents: [
-              { type: 'text', text: 'ดำเนินการเสร็จสิ้น', color: '#FFFFFF', size: 'xl', weight: 'bold', align: 'center' },
-            ],
-          },
-        ],
+        type: 'image',
+        url: payload.problemImageUrl,
+        size: 'full',
+        aspectRatio: '20:13',
+        aspectMode: 'cover',
       } : undefined,
       body: {
         type: 'box',
