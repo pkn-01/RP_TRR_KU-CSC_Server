@@ -68,10 +68,7 @@ export class RepairsController {
       dto.reporterPhone = sanitize(body.reporterPhone);
       dto.location = sanitize(body.location) || 'ไม่ได้ระบุ';
 
-      // Smart Title Handling:
-      // Since the frontend now sends the full description as the title,
-      // we check if they are identical. If so, and it's long, we truncate the title
-      // to keep the dashboard clean.
+      
       const rawTitle = sanitize(body.problemTitle) || sanitize(body.problemDescription) || 'ไม่มีหัวข้อ';
       const rawDescription = sanitize(body.problemDescription) || sanitize(body.problemTitle) || '';
 
@@ -303,8 +300,6 @@ export class RepairsController {
     @UploadedFiles() files?: Express.Multer.File[],
   ) {
     try {
-      // LINE notification is already handled in repairsService.update()
-      // Do NOT send notification here to avoid duplicate notifications
       const updated = await this.repairsService.update(
         id,
         dto,
