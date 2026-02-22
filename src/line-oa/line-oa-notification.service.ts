@@ -256,6 +256,7 @@ export class LineOANotificationService {
       location?: string;
       cancelledAt: Date;
       cancelNote?: string;
+      problemImageUrl?: string;
     }
   ) {
     try {
@@ -1030,6 +1031,13 @@ export class LineOANotificationService {
           { type: 'text', text: payload.ticketCode, color: '#FEE2E2CC', size: 'sm', margin: 'sm', weight: 'bold' },
         ],
       },
+      hero: payload.problemImageUrl ? {
+        type: 'image',
+        url: payload.problemImageUrl,
+        size: 'full',
+        aspectRatio: '20:13',
+        aspectMode: 'cover',
+      } : undefined,
       body: {
         type: 'box',
         layout: 'vertical',
