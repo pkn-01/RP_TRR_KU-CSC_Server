@@ -242,6 +242,49 @@ export class LineOANotificationService {
   }
 
   /* =======================
+     NOTIFY TECHNICIAN (JOB CANCELLED)
+  ====================== */
+
+  async notifyTechnicianJobCancellation(
+    technicianId: number,
+    payload: {
+      ticketCode: string;
+      ticketId?: number;
+      problemTitle: string;
+      reporterName: string;
+      department?: string;
+      location?: string;
+      cancelledAt: Date;
+      cancelNote?: string;
+    }
+  ) {
+    try {
+      const lineLink = await this.getVerifiedLineLink(technicianId);
+      if (!lineLink) return { success: false, reason: 'Technician not linked to LINE' };
+
+      const flexMessage = {
+        type: 'flex' as const,
+        altText: `ยกเลิกงานซ่อม ${payload.ticketCode}`,
+        contents: this.createTechnicianCancellationFlex({
+          ...payload,
+        }) as any,
+      };
+
+      await this.lineOAService.sendMessage(lineLink.lineUserId!, flexMessage);
+      await this.saveNotificationLog(lineLink.lineUserId!, {
+        type: 'REPAIR_TICKET_CANCELLED',
+        title: 'ยกเลิกงานซ่อม',
+        message: `${payload.ticketCode}: ${payload.problemTitle}`,
+      }, NotificationStatus.SENT);
+
+      return { success: true };
+    } catch (error) {
+      this.logger.error(error.message);
+      return { success: false };
+    }
+  }
+
+  /* =======================
      STATUS UPDATE → REPORTER
   ======================= */
 
@@ -927,6 +970,142 @@ export class LineOANotificationService {
             layout: 'horizontal',
             contents: [
               { type: 'text', text: `ปิดงานเมื่อ ${formattedDate}`, size: 'xxs', color: '#94A3B8' },
+              { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: '#CBD5E1', align: 'end', weight: 'bold' },
+            ],
+          },
+        ],
+      },
+    };
+  }
+
+  private createTechnicianCancellationFlex(payload: any) {
+    const formattedDate = new Intl.DateTimeFormat('th-TH', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+      timeZone: 'Asia/Bangkok',
+    }).format(payload.cancelledAt || new Date());
+
+    let frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc.vercel.app';
+    try {
+      frontendUrl = new URL(frontendUrl).origin;
+    } catch (e) {}
+    
+    const actionButtons: any[] = [];
+    if (payload.ticketId) {
+      actionButtons.push({
+        type: 'button',
+        action: { type: 'uri', label: 'ดูรายละเอียดงาน', uri: `${frontendUrl}/login/admin?ticketId=${payload.ticketId}` },
+        style: 'primary',
+        height: 'sm',
+        color: '#DC2626',
+      });
+    }
+
+    return {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#DC2626',
+        paddingAll: '20px',
+        contents: [
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: 'ยกเลิกงานซ่อม', color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1 },
+              {
+                type: 'box',
+                layout: 'vertical',
+                backgroundColor: '#FEE2E2',
+                cornerRadius: 'xl',
+                paddingAll: '4px',
+                paddingStart: '12px',
+                paddingEnd: '12px',
+                contents: [{ type: 'text', text: 'ยกเลิก', color: '#991B1B', size: 'xxs', weight: 'bold' }],
+              },
+            ],
+          },
+          { type: 'text', text: payload.ticketCode, color: '#FEE2E2CC', size: 'sm', margin: 'sm', weight: 'bold' },
+        ],
+      },
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '20px',
+        backgroundColor: '#FFFFFF',
+        contents: [
+          {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'xs',
+            contents: [
+              { type: 'text', text: 'งานซ่อม', size: 'xs', color: '#64748B', weight: 'bold' },
+              { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: '#1E293B', wrap: true },
+            ],
+          },
+          ...(payload.cancelNote ? [{
+            type: 'box',
+            layout: 'vertical',
+            margin: 'md',
+            paddingAll: '12px',
+            backgroundColor: '#FEF2F2',
+            cornerRadius: 'md',
+            borderColor: '#FECACA',
+            borderWidth: '1px',
+            contents: [
+              { type: 'text', text: 'เหตุผลการยกเลิก', size: 'xs', color: '#B91C1C', weight: 'bold' },
+              { type: 'text', text: payload.cancelNote, size: 'sm', color: '#991B1B', wrap: true, margin: 'xs' },
+            ],
+          }] : []),
+          { type: 'separator', margin: 'xl', color: '#F1F5F9' },
+          {
+            type: 'box',
+            layout: 'vertical',
+            margin: 'xl',
+            spacing: 'sm',
+            contents: [
+              {
+                type: 'box', layout: 'horizontal', contents: [
+                  { type: 'text', text: 'ผู้แจ้ง', size: 'sm', color: '#64748B', flex: 3 },
+                  { type: 'text', text: payload.reporterName, size: 'sm', color: '#1E293B', weight: 'bold', flex: 7, wrap: true },
+                ],
+              },
+              {
+                type: 'box', layout: 'horizontal', contents: [
+                  { type: 'text', text: 'แผนก', size: 'sm', color: '#64748B', flex: 3 },
+                  { type: 'text', text: payload.department || '-', size: 'sm', color: '#1E293B', flex: 7, wrap: true },
+                ],
+              },
+              {
+                type: 'box', layout: 'horizontal', contents: [
+                  { type: 'text', text: 'สถานที่', size: 'sm', color: '#64748B', flex: 3 },
+                  { type: 'text', text: payload.location || '-', size: 'sm', color: '#1E293B', flex: 7, wrap: true },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '20px',
+        backgroundColor: '#F8FAFC',
+        spacing: 'md',
+        contents: [
+          ...(actionButtons.length > 0 ? [{
+            type: 'box',
+            layout: 'horizontal',
+            spacing: 'sm',
+            contents: actionButtons,
+          }] : []),
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: `ยกเลิกเมื่อ ${formattedDate}`, size: 'xxs', color: '#94A3B8' },
               { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: '#CBD5E1', align: 'end', weight: 'bold' },
             ],
           },

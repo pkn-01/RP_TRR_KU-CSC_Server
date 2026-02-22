@@ -535,6 +535,28 @@ export class RepairsService {
            }
         }
 
+        // Notify technicians when job is CANCELLED (if it had assignees)
+        if (dto.status === 'CANCELLED' && originalTicket && originalTicket.status !== 'CANCELLED') {
+           const assignees = await this.prisma.repairTicketAssignee.findMany({
+             where: { repairTicketId: id },
+             include: { user: true }
+           });
+
+           for (const assignee of assignees) {
+              await this.lineNotificationService.notifyTechnicianJobCancellation(assignee.userId, {
+                ticketCode: ticket.ticketCode,
+                ticketId: ticket.id,
+                problemTitle: ticket.problemTitle,
+                reporterName: ticket.reporterName,
+                department: ticket.reporterDepartment || undefined,
+                location: ticket.location,
+                cancelledAt: new Date(),
+                cancelNote: dto.notes,
+              });
+              this.logger.log(`Notified technician ${assignee.userId} for cancellation: ${ticket.ticketCode}`);
+           }
+        }
+
         // Notify reporter on status change (exclusively, ignore assignee changes)
         if (dto.status !== undefined && originalTicket && dto.status !== originalTicket.status) {
           const technicianNames = ticket.assignees.map(a => a.user.name);
