@@ -782,13 +782,41 @@ export class RepairsService {
     };
   }
 
-  async getDepartmentStatistics() {
+  async getDepartmentStatistics(filter?: 'day' | 'week' | 'month', date?: Date) {
+    // Build date range filter when filter is provided
+    let dateWhere: any = {};
+    if (filter && date) {
+      let startDate: Date;
+      let endDate: Date;
+
+      if (filter === 'day') {
+        startDate = new Date(date);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(date);
+        endDate.setHours(23, 59, 59, 999);
+      } else if (filter === 'week') {
+        const dayOfWeek = date.getDay();
+        startDate = new Date(date);
+        startDate.setDate(date.getDate() - dayOfWeek);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 6);
+        endDate.setHours(23, 59, 59, 999);
+      } else {
+        startDate = new Date(date.getFullYear(), date.getMonth(), 1);
+        endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+      }
+
+      dateWhere = { createdAt: { gte: startDate, lte: endDate } };
+    }
+
     // PERF: Single groupBy query replaces 5 separate N+1 queries
     const rawStats = await this.prisma.repairTicket.groupBy({
       by: ['reporterDepartment', 'status'],
       _count: { status: true },
       where: {
         reporterDepartment: { not: null },
+        ...dateWhere,
       },
     });
 

@@ -268,8 +268,12 @@ export class RepairsController {
 
   @Get('statistics/by-department')
   @UseGuards(JwtAuthGuard)
-  async getDepartmentStatistics() {
-    return this.repairsService.getDepartmentStatistics();
+  async getDepartmentStatistics(
+    @Query('filter') filter?: 'day' | 'week' | 'month',
+    @Query('date') dateStr?: string,
+  ) {
+    const date = dateStr ? new Date(dateStr) : undefined;
+    return this.repairsService.getDepartmentStatistics(filter, date);
   }
 
   @Get('user/my-tickets')
