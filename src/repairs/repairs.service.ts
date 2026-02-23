@@ -542,6 +542,13 @@ export class RepairsService {
              include: { user: true }
            });
 
+           // Get first attachment image for the cancellation notification
+           const ticketForCancelImage = await this.prisma.repairTicket.findUnique({
+             where: { id },
+             include: { attachments: { orderBy: { id: 'asc' }, take: 1 } },
+           });
+           const cancelProblemImageUrl = ticketForCancelImage?.attachments?.[0]?.fileUrl;
+
            for (const assignee of assignees) {
               await this.lineNotificationService.notifyTechnicianJobCancellation(assignee.userId, {
                 ticketCode: ticket.ticketCode,
@@ -552,6 +559,7 @@ export class RepairsService {
                 location: ticket.location,
                 cancelledAt: new Date(),
                 cancelNote: dto.notes,
+                problemImageUrl: cancelProblemImageUrl,
               });
               this.logger.log(`Notified technician ${assignee.userId} for cancellation: ${ticket.ticketCode}`);
            }
