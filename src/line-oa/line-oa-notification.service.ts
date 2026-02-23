@@ -386,6 +386,7 @@ export class LineOANotificationService {
           {
             type: 'box',
             layout: 'horizontal',
+            alignItems: 'center',
             contents: [
               { type: 'text', text: 'สถานะการแจ้งซ่อม', color: '#FFFFFFCC', size: 'xs', weight: 'bold', flex: 1 },
               {
@@ -396,6 +397,7 @@ export class LineOANotificationService {
                 paddingAll: '4px',
                 paddingStart: '12px',
                 paddingEnd: '12px',
+                flex: 0,
                 contents: [{ type: 'text', text: urgencyConfig.text, color: '#FFFFFF', size: 'xxs', weight: 'bold' }],
               },
             ],
@@ -576,6 +578,7 @@ export class LineOANotificationService {
           {
             type: 'box',
             layout: 'horizontal',
+            alignItems: 'center',
             contents: [
               { type: 'text', text: 'แจ้งซ่อมใหม่', color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1 },
               {
@@ -584,8 +587,9 @@ export class LineOANotificationService {
                 backgroundColor: urgency.color,
                 cornerRadius: 'xl',
                 paddingAll: '4px',
-                paddingStart: '12px',
-                paddingEnd: '12px',
+                paddingStart: '10px',
+                paddingEnd: '10px',
+                flex: 0,
                 contents: [{ type: 'text', text: urgency.text, color: '#FFFFFF', size: 'xxs', weight: 'bold' }],
               },
             ],
@@ -728,16 +732,18 @@ export class LineOANotificationService {
           {
             type: 'box',
             layout: 'horizontal',
+            alignItems: 'center',
             contents: [
-              { type: 'text', text: actionText, color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1 },
+              { type: 'text', text: actionText, color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1, wrap: true },
               {
                 type: 'box',
                 layout: 'vertical',
                 backgroundColor: urgency.color,
                 cornerRadius: 'xl',
                 paddingAll: '4px',
-                paddingStart: '12px',
-                paddingEnd: '12px',
+                paddingStart: '10px',
+                paddingEnd: '10px',
+                flex: 0,
                 contents: [{ type: 'text', text: urgency.text, color: '#FFFFFF', size: 'xxs', weight: 'bold' }],
               },
             ],
