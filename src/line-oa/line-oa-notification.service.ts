@@ -549,9 +549,9 @@ export class LineOANotificationService {
       actionButtons.push({
         type: 'button',
         action: { type: 'uri', label: 'โทรหาผู้แจ้ง', uri: `tel:${payload.reporterPhone}` },
-        style: 'secondary',
+        style: 'primary',
         height: 'sm',
-        color: '#059669',
+        color: '#63DC75',
       });
     }
     if (payload.ticketId) {
@@ -701,9 +701,9 @@ export class LineOANotificationService {
       actionButtons.push({
         type: 'button',
         action: { type: 'uri', label: 'โทรหาผู้แจ้ง', uri: `tel:${payload.reporterPhone}` },
-        style: 'secondary',
+        style: 'primary',
         height: 'sm',
-        color: '#059669',
+        color: '#63DC75',
       });
     }
     if (payload.ticketId) {
