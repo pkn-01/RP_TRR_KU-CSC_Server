@@ -877,16 +877,18 @@ export class LineOANotificationService {
           {
             type: 'box',
             layout: 'horizontal',
+            alignItems: 'center',
             contents: [
-              { type: 'text', text: 'ปิดงานเรียบร้อย', color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1 },
+              { type: 'text', text: 'ปิดงานเรียบร้อย', color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1, wrap: true },
               {
                 type: 'box',
                 layout: 'vertical',
                 backgroundColor: '#DCFCE7',
                 cornerRadius: 'xl',
                 paddingAll: '4px',
-                paddingStart: '12px',
-                paddingEnd: '12px',
+                paddingStart: '10px',
+                paddingEnd: '10px',
+                flex: 0,
                 contents: [{ type: 'text', text: 'เสร็จสิ้น', color: '#166534', size: 'xxs', weight: 'bold' }],
               },
             ],
@@ -1020,16 +1022,18 @@ export class LineOANotificationService {
           {
             type: 'box',
             layout: 'horizontal',
+            alignItems: 'center',
             contents: [
-              { type: 'text', text: 'ยกเลิกงานซ่อม', color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1 },
+              { type: 'text', text: 'ยกเลิกงานซ่อม', color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1, wrap: true },
               {
                 type: 'box',
                 layout: 'vertical',
                 backgroundColor: '#FEE2E2',
                 cornerRadius: 'xl',
                 paddingAll: '4px',
-                paddingStart: '12px',
-                paddingEnd: '12px',
+                paddingStart: '10px',
+                paddingEnd: '10px',
+                flex: 0,
                 contents: [{ type: 'text', text: 'ยกเลิก', color: '#991B1B', size: 'xxs', weight: 'bold' }],
               },
             ],
