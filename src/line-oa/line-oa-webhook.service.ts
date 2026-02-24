@@ -226,14 +226,15 @@ export class LineOAWebhookService {
    */
   private async handleRepairKeyword(lineUserId: string, client: line.Client, replyToken?: string) {
     try {
-      // Use LIFF URL for secure authentication (LIFF SDK handles userId via profile)
-      const liffUrl = `https://liff.line.me/${this.liffId}`;
+      // User requested direct URL with lineUserId (bypass LIFF shortlink)
+      const frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc-2026.vercel.app';
+      const repairFormUrl = `${frontendUrl}/repairs/liff/form?lineUserId=${lineUserId}`;
 
-      this.logger.log(`Sending LIFF repair form URL to ${lineUserId}: ${liffUrl}`);
+      this.logger.log(`Sending repair form URL to ${lineUserId}: ${repairFormUrl}`);
 
       const message: line.Message = {
         type: 'text',
-        text: `แจ้งซ่อมกดลิ้งนี้\n${liffUrl}`,
+        text: `แจ้งซ่อมกดลิ้งนี้\n${repairFormUrl}`,
       };
 
       if (replyToken) {
@@ -244,11 +245,11 @@ export class LineOAWebhookService {
     } catch (error: any) {
       this.logger.error(`Failed to handle repair keyword response: ${error.message}`, error);
       
-      // Fallback response if template fails
+      // Fallback response if template fails (e.g., if LIFF URL is considered invalid)
       if (replyToken) {
         await client.replyMessage(replyToken, {
           type: 'text',
-          text: `กรุณากดลิงก์เพื่อแจ้งซ่อม: https://liff.line.me/${this.liffId}`
+          text: `กรุณากดลิงก์เพื่อแจ้งซ่อม: https://liff.line.me/${this.liffId}?action=create`
         });
       }
     }
@@ -357,10 +358,10 @@ export class LineOAWebhookService {
    * Handle "Create Repair" postback - เปิด LIFF form พร้อม lineUserId
    */
   private async handleCreateRepairPostback(lineUserId: string, client: line.Client, replyToken?: string) {
-    // Use LIFF URL for secure authentication (LIFF SDK handles userId via profile)
-    const liffUrl = `https://liff.line.me/${this.liffId}`;
+    const frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc-2026.vercel.app';
+    const repairFormUrl = `${frontendUrl}/repairs/liff/form?lineUserId=${lineUserId}`;
 
-    this.logger.log(`Opening repair form for user: ${lineUserId}, URL: ${liffUrl}`);
+    this.logger.log(`Opening repair form for user: ${lineUserId}, URL: ${repairFormUrl}`);
 
     const message: line.Message = {
       type: 'template',
@@ -372,7 +373,7 @@ export class LineOAWebhookService {
           {
             type: 'uri',
             label: 'เปิดฟอร์มแจ้งซ่อม',
-            uri: liffUrl,
+            uri: repairFormUrl,
           },
         ],
       },
@@ -476,10 +477,10 @@ export class LineOAWebhookService {
       text: `❓ คำถามที่พบบ่อย (FAQ)
 
 1️⃣ จะแจ้งซ่อมได้ยังไง?
-→ กด "" และกรอกแบบฟอร์มพร้อมรูปภาพ
+→ กด "🔧 แจ้งซ่อม" และกรอกแบบฟอร์มพร้อมรูปภาพ
 
 2️⃣ ตรวจสอบสถานะได้ยังไง?
-→ กด "ตรวจสอบสถานะ" เพื่อดูรายการของคุณ
+→ กด "📋 ตรวจสอบสถานะ" เพื่อดูรายการของคุณ
 
 3️⃣ เลขที่รายการ (Ticket) คืออะไร?
 → เลขที่อ้างอิงของรายการแจ้งซ่อม เช่น TRR-10022569001
