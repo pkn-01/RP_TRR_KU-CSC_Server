@@ -86,6 +86,8 @@ export class RepairsController {
         try {
           const rawLiffId = (process.env.LINE_LIFF_ID || '').replace(/^"|"$/g, '');
           const clientId = process.env.LINE_LOGIN_CHANNEL_ID || rawLiffId.split('-')[0];
+          
+          this.logger.log(`Verifying ID token for clientId: ${clientId}`);
 
           const response = await fetch('https://api.line.me/oauth2/v2.1/verify', {
             method: 'POST',
@@ -98,12 +100,13 @@ export class RepairsController {
           const lineProfile = await response.json();
 
           if (!response.ok || lineProfile.error) {
-            this.logger.error(`LINE token verification failed: ${JSON.stringify(lineProfile)}`);
-            throw new ForbiddenException('Invalid LINE ID Token');
+            this.logger.error(`LINE token verification failed: ${JSON.stringify(lineProfile)} (Status: ${response.status})`);
+            throw new ForbiddenException(`Invalid LINE ID Token: ${lineProfile.error_description || 'Unknown error'}`);
           }
           validatedLineUserId = lineProfile.sub;
-        } catch (error) {
-          throw new ForbiddenException('Failed to verify LINE ID Token');
+        } catch (error: any) {
+          this.logger.error(`Token verification exception: ${error.message}`, error.stack);
+          throw new ForbiddenException(`Failed to verify LINE ID Token: ${error.message}`);
         }
       }
 
