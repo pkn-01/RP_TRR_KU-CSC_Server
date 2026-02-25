@@ -1337,118 +1337,156 @@ export class LineOANotificationService {
   }
 
   /* =======================
-     CHECK STATUS FLEX CAROUSEL
+     CHECK STATUS FLEX (TABLE STYLE)
   ======================= */
 
   /**
-   * สร้าง Flex Message Carousel สำหรับแสดงสถานะการแจ้งซ่อมทั้งหมดของผู้ใช้
-   * ตาม mockup: แต่ละ bubble มี header สีตามสถานะ, badge ความเร่งด่วน, รูปภาพ, ticket code, ปัญหา, วันที่
+   * สร้าง Flex Message แบบตาราง "ประวัติการแจ้ง"
+   * แสดงเลขรหัส, ปัญหาที่แจ้ง, ระดับความเร่งด่วน, สถานะ, ดูรายละเอียด
    */
   createCheckStatusCarousel(tickets: any[]): any {
-    // LINE Carousel supports max 12 bubbles
-    const bubbles = tickets.slice(0, 12).map(ticket => this.createCheckStatusFlexBubble(ticket));
-    
-    return {
-      type: 'carousel',
-      contents: bubbles,
-    };
-  }
+    let frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc.vercel.app';
+    try {
+      frontendUrl = new URL(frontendUrl).origin;
+    } catch (e) {}
 
-  /**
-   * สร้าง Flex bubble สำหรับแสดงสถานะ ticket หนึ่งรายการ
-   */
-  private createCheckStatusFlexBubble(ticket: any): any {
-    const statusConfig = this.getStatusConfig(ticket.status);
-    const urgencyConfig = this.getUrgencyConfig(ticket.urgency);
+    const displayTickets = tickets.slice(0, 5); // จำกัด 5 รายการ เพื่อไม่ให้ bubble ใหญ่เกิน
 
-    // Get first attachment image URL
-    const imageUrl = ticket.attachments?.[0]?.fileUrl || null;
+    // สร้าง rows สำหรับแต่ละ ticket
+    const ticketRows: any[] = [];
+    displayTickets.forEach((ticket, index) => {
+      const urgencyConfig = this.getUrgencyConfig(ticket.urgency);
+      const statusConfig = this.getStatusConfig(ticket.status);
 
-    const formattedDate = new Intl.DateTimeFormat('th-TH', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit',
-      timeZone: 'Asia/Bangkok',
-    }).format(new Date(ticket.createdAt));
+      // Separator ระหว่าง rows
+      if (index > 0) {
+        ticketRows.push({
+          type: 'separator',
+          margin: 'sm',
+          color: '#E2E8F0',
+        });
+      }
+
+      ticketRows.push({
+        type: 'box',
+        layout: 'horizontal',
+        margin: 'md',
+        spacing: 'sm',
+        alignItems: 'center',
+        contents: [
+          // เลขรหัส
+          {
+            type: 'text',
+            text: ticket.ticketCode,
+            size: 'xxs',
+            color: '#1E293B',
+            flex: 4,
+            wrap: false,
+          },
+          // ปัญหาที่แจ้ง
+          {
+            type: 'text',
+            text: ticket.problemTitle,
+            size: 'xxs',
+            color: '#334155',
+            flex: 4,
+            wrap: true,
+            maxLines: 2,
+          },
+          // ระดับความเร่งด่วน
+          {
+            type: 'text',
+            text: urgencyConfig.text,
+            size: 'xxs',
+            color: urgencyConfig.color,
+            flex: 3,
+            align: 'center',
+            weight: 'bold',
+          },
+          // สถานะ
+          {
+            type: 'text',
+            text: statusConfig.text,
+            size: 'xxs',
+            color: statusConfig.color,
+            flex: 3,
+            align: 'center',
+            weight: 'bold',
+          },
+          // ดูรายละเอียด
+          {
+            type: 'box',
+            layout: 'vertical',
+            flex: 2,
+            contents: [
+              {
+                type: 'button',
+                action: {
+                  type: 'uri',
+                  label: 'ดู',
+                  uri: `${frontendUrl}/repairs/${ticket.id}`,
+                },
+                style: 'secondary',
+                height: 'sm',
+                color: '#E2E8F0',
+              },
+            ],
+          },
+        ],
+      });
+    });
 
     return {
       type: 'bubble',
       size: 'mega',
-      header: {
-        type: 'box',
-        layout: 'vertical',
-        backgroundColor: statusConfig.color,
-        paddingAll: '20px',
-        contents: [
-          {
-            type: 'box',
-            layout: 'horizontal',
-            alignItems: 'center',
-            contents: [
-              { type: 'text', text: 'สถานะการแจ้งซ่อม', color: '#FFFFFFCC', size: 'xs', weight: 'bold', flex: 1 },
-              {
-                type: 'box',
-                layout: 'vertical',
-                backgroundColor: '#FFFFFF33',
-                cornerRadius: 'xl',
-                paddingAll: '4px',
-                paddingStart: '12px',
-                paddingEnd: '12px',
-                flex: 0,
-                contents: [{ type: 'text', text: urgencyConfig.text, color: '#FFFFFF', size: 'xxs', weight: 'bold' }],
-              },
-            ],
-          },
-          { type: 'text', text: statusConfig.text, color: '#FFFFFF', size: 'xxl', weight: 'bold', margin: 'sm' },
-        ],
-      },
-      ...(imageUrl ? {
-        hero: {
-          type: 'image',
-          url: imageUrl,
-          size: 'full',
-          aspectRatio: '20:13',
-          aspectMode: 'cover',
-        },
-      } : {}),
       body: {
         type: 'box',
         layout: 'vertical',
         paddingAll: '20px',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#F1F5F9',
         contents: [
-          // ── Ticket Code ──
+          // ── Title ──
+          {
+            type: 'text',
+            text: 'ประวัติการแจ้ง',
+            size: 'xl',
+            weight: 'bold',
+            color: '#1E293B',
+          },
+          // ── Header separator ──
+          {
+            type: 'separator',
+            margin: 'lg',
+            color: '#3B82F6',
+          },
+          // ── Column headers ──
           {
             type: 'box',
             layout: 'horizontal',
-            contents: [
-              { type: 'text', text: 'หมายเลขงาน', size: 'sm', color: '#64748B', flex: 4 },
-              { type: 'text', text: ticket.ticketCode, size: 'sm', color: '#1E293B', weight: 'bold', flex: 6, align: 'end' },
-            ],
-          },
-          { type: 'separator', margin: 'lg', color: '#F1F5F9' },
-
-          // ── Problem Section ──
-          {
-            type: 'box',
-            layout: 'vertical',
             margin: 'lg',
-            spacing: 'xs',
+            spacing: 'sm',
             contents: [
-              { type: 'text', text: 'ปัญหาที่แจ้ง', size: 'xs', color: '#64748B', weight: 'bold' },
-              { type: 'text', text: ticket.problemTitle, size: 'md', weight: 'bold', color: '#1E293B', wrap: true },
+              { type: 'text', text: 'เลขรหัส', size: 'xxs', color: '#64748B', weight: 'bold', flex: 4 },
+              { type: 'text', text: 'ปัญหาที่แจ้ง', size: 'xxs', color: '#64748B', weight: 'bold', flex: 4 },
+              { type: 'text', text: 'ความเร่งด่วน', size: 'xxs', color: '#64748B', weight: 'bold', flex: 3, align: 'center' },
+              { type: 'text', text: 'สถานะ', size: 'xxs', color: '#64748B', weight: 'bold', flex: 3, align: 'center' },
+              { type: 'text', text: 'ดูรายละเอียด', size: 'xxs', color: '#64748B', weight: 'bold', flex: 2, align: 'center' },
             ],
           },
-        ],
-      },
-      footer: {
-        type: 'box',
-        layout: 'horizontal',
-        backgroundColor: '#F8FAFC',
-        paddingAll: '16px',
-        justifyContent: 'space-between',
-        contents: [
-          { type: 'text', text: `แจ้งเมื่อ ${formattedDate}`, size: 'xxs', color: '#94A3B8' },
-          { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: '#CBD5E1', weight: 'bold', align: 'end' },
+          // ── Separator under column headers ──
+          {
+            type: 'separator',
+            margin: 'sm',
+            color: '#CBD5E1',
+          },
+          // ── Ticket rows ──
+          ...ticketRows,
+          // ── Bottom separator ──
+          {
+            type: 'separator',
+            margin: 'lg',
+            color: '#3B82F6',
+          },
         ],
       },
     };
