@@ -1337,99 +1337,78 @@ export class LineOANotificationService {
   }
 
   /* =======================
-     CHECK STATUS FLEX (TABLE STYLE)
+     CHECK STATUS FLEX (CARD STYLE)
   ======================= */
 
   /**
-   * สร้าง Flex Message แบบตาราง "ประวัติการแจ้ง"
-   * แสดงเวลาที่แจ้ง, ปัญหาที่แจ้ง, สถานะ, ดูรายละเอียด
-   * สีพื้นหลังแถวตามความเร่งด่วน (เทา=ปกติ, อัมพัน=ด่วน, แดง=ด่วนที่สุด)
+   * สร้าง Flex Message แบบ Card "ประวัติการแจ้งซ่อม"
+   * แต่ละ ticket เป็น card แนวตั้ง อ่านง่ายบนมือถือ
+   * สีแถบด้านข้างตามความเร่งด่วน (เทา=ปกติ, อัมพัน=ด่วน, แดง=ด่วนที่สุด)
    */
   createCheckStatusCarousel(tickets: any[], page = 1, pageSize = 3): any {
     let frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc.vercel.app';
-    try {
-      frontendUrl = new URL(frontendUrl).origin;
-    } catch (e) {}
+    try { frontendUrl = new URL(frontendUrl).origin; } catch (e) {}
 
     const totalTickets = tickets.length;
-    const totalPages = Math.ceil(totalTickets / pageSize);
+    const totalPages = Math.max(Math.ceil(totalTickets / pageSize), 1);
     const currentPage = Math.min(Math.max(page, 1), totalPages);
     const startIdx = (currentPage - 1) * pageSize;
     const displayTickets = tickets.slice(startIdx, startIdx + pageSize);
 
-    // สีพื้นหลังแถวตามความเร่งด่วน
-    const urgencyRowColors: Record<string, string> = {
-      NORMAL: '#D1D5DB',     // เทา
-      URGENT: '#FBBF24',     // อัมพัน/amber
-      CRITICAL: '#EF4444',   // แดง
+    const urgencyColors: Record<string, { bar: string; bg: string; label: string }> = {
+      NORMAL:   { bar: '#9CA3AF', bg: '#F9FAFB', label: 'ปกติ' },
+      URGENT:   { bar: '#F59E0B', bg: '#FFFBEB', label: 'ด่วน' },
+      CRITICAL: { bar: '#EF4444', bg: '#FEF2F2', label: 'ด่วนที่สุด' },
     };
 
-    // สร้าง rows สำหรับแต่ละ ticket
-    const ticketRows: any[] = [];
+    // สร้าง card สำหรับแต่ละ ticket
+    const ticketCards: any[] = [];
     displayTickets.forEach((ticket) => {
-      const statusConfig = this.getStatusConfig(ticket.status);
-      const rowBgColor = urgencyRowColors[ticket.urgency] || '#D1D5DB';
-
-      const formattedDate = new Intl.DateTimeFormat('th-TH', {
-        day: 'numeric', month: 'numeric', year: 'numeric',
-        timeZone: 'Asia/Bangkok',
+      const statusCfg = this.getStatusConfig(ticket.status);
+      const urg = urgencyColors[ticket.urgency] || urgencyColors.NORMAL;
+      const dateStr = new Intl.DateTimeFormat('th-TH', {
+        day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Bangkok',
       }).format(new Date(ticket.createdAt));
 
-      ticketRows.push({
-        type: 'box',
-        layout: 'horizontal',
-        backgroundColor: rowBgColor,
-        paddingAll: '10px',
-        spacing: 'sm',
-        alignItems: 'center',
-        margin: 'sm',
-        cornerRadius: 'md',
+      ticketCards.push({
+        type: 'box', layout: 'horizontal', backgroundColor: urg.bg,
+        cornerRadius: 'lg', margin: 'md', paddingAll: '0px',
         contents: [
-          // เวลาที่แจ้ง
+          // แถบสีซ้าย
+          { type: 'box', layout: 'vertical', width: '6px', backgroundColor: urg.bar, contents: [{ type: 'filler' }] },
+          // เนื้อหา
           {
-            type: 'text',
-            text: formattedDate,
-            size: 'xs',
-            color: '#1E293B',
-            flex: 3,
-            wrap: false,
-          },
-          // ปัญหาที่แจ้ง
-          {
-            type: 'text',
-            text: ticket.problemTitle,
-            size: 'xs',
-            color: '#1E293B',
-            flex: 5,
-            wrap: true,
-            maxLines: 2,
-          },
-          // สถานะ
-          {
-            type: 'text',
-            text: statusConfig.text,
-            size: 'xs',
-            color: '#1E293B',
-            flex: 3,
-            align: 'center',
-            weight: 'bold',
-          },
-          // ดูรายละเอียด
-          {
-            type: 'box',
-            layout: 'vertical',
-            flex: 2,
+            type: 'box', layout: 'vertical', flex: 1, paddingAll: '14px', spacing: 'sm',
             contents: [
+              // วันที่ + badge ความเร่งด่วน
               {
-                type: 'button',
-                action: {
-                  type: 'uri',
-                  label: 'ดู',
-                  uri: `${frontendUrl}/repairs/track/${ticket.ticketCode}`,
-                },
-                style: 'secondary',
-                height: 'sm',
-                color: '#FFFFFF',
+                type: 'box', layout: 'horizontal', alignItems: 'center',
+                contents: [
+                  { type: 'text', text: dateStr, size: 'xs', color: '#94A3B8', flex: 1 },
+                  {
+                    type: 'box', layout: 'vertical', backgroundColor: urg.bar, cornerRadius: 'xl',
+                    paddingAll: '3px', paddingStart: '8px', paddingEnd: '8px', flex: 0,
+                    contents: [{ type: 'text', text: urg.label, color: '#FFFFFF', size: 'xxs', weight: 'bold' }],
+                  },
+                ],
+              },
+              // ปัญหา
+              { type: 'text', text: ticket.problemTitle, size: 'sm', color: '#1E293B', weight: 'bold', wrap: true, maxLines: 2 },
+              // สถานะ + ปุ่มดู
+              {
+                type: 'box', layout: 'horizontal', alignItems: 'center', margin: 'xs',
+                contents: [
+                  {
+                    type: 'box', layout: 'vertical', backgroundColor: statusCfg.color + '20', cornerRadius: 'md',
+                    paddingAll: '4px', paddingStart: '10px', paddingEnd: '10px', flex: 0,
+                    contents: [{ type: 'text', text: statusCfg.text, color: statusCfg.color, size: 'xs', weight: 'bold' }],
+                  },
+                  { type: 'filler' },
+                  {
+                    type: 'button', style: 'primary', height: 'sm', flex: 0, color: '#3B82F6',
+                    action: { type: 'uri', label: 'ดูรายละเอียด', uri: `${frontendUrl}/repairs/track/${ticket.ticketCode}` },
+                  },
+                ],
               },
             ],
           },
@@ -1437,130 +1416,48 @@ export class LineOANotificationService {
       });
     });
 
-    // สร้าง pagination footer
-    const paginationContents: any[] = [
-      {
-        type: 'text',
-        text: `${currentPage}-${totalPages}`,
-        size: 'sm',
-        color: '#64748B',
-        flex: 0,
-        align: 'end',
-        gravity: 'center',
-      },
-    ];
-
-    // ปุ่ม < (previous)
+    // Pagination
+    const pageParts: any[] = [{ type: 'filler' }];
+    pageParts.push({
+      type: 'box', layout: 'vertical', backgroundColor: '#E2E8F0', cornerRadius: 'md',
+      paddingAll: '4px', paddingStart: '10px', paddingEnd: '10px', flex: 0,
+      contents: [{ type: 'text', text: `${currentPage} / ${totalPages}`, size: 'xs', color: '#64748B', weight: 'bold', align: 'center' }],
+    });
     if (currentPage > 1) {
-      paginationContents.push({
-        type: 'button',
-        action: {
-          type: 'postback',
-          label: '<',
-          data: `action=check_status&page=${currentPage - 1}`,
-          displayText: 'ตรวจสอบสถานะ',
-        },
-        style: 'secondary',
-        height: 'sm',
-        flex: 0,
-        color: '#E2E8F0',
-      });
-    } else {
-      paginationContents.push({
-        type: 'text',
-        text: '  ',
-        size: 'sm',
-        flex: 0,
+      pageParts.push({
+        type: 'button', style: 'secondary', height: 'sm', flex: 0, color: '#E2E8F0',
+        action: { type: 'postback', label: '◀', data: `action=check_status&page=${currentPage - 1}`, displayText: 'ตรวจสอบสถานะ' },
       });
     }
-
-    // ปุ่ม > (next)
     if (currentPage < totalPages) {
-      paginationContents.push({
-        type: 'button',
-        action: {
-          type: 'postback',
-          label: '>',
-          data: `action=check_status&page=${currentPage + 1}`,
-          displayText: 'ตรวจสอบสถานะ',
-        },
-        style: 'secondary',
-        height: 'sm',
-        flex: 0,
-        color: '#E2E8F0',
-      });
-    } else {
-      paginationContents.push({
-        type: 'text',
-        text: '  ',
-        size: 'sm',
-        flex: 0,
+      pageParts.push({
+        type: 'button', style: 'secondary', height: 'sm', flex: 0, color: '#E2E8F0',
+        action: { type: 'postback', label: '▶', data: `action=check_status&page=${currentPage + 1}`, displayText: 'ตรวจสอบสถานะ' },
       });
     }
 
     return {
       type: 'bubble',
       size: 'mega',
-      body: {
-        type: 'box',
-        layout: 'vertical',
-        paddingAll: '20px',
-        backgroundColor: '#F1F5F9',
+      header: {
+        type: 'box', layout: 'vertical', backgroundColor: '#0F172A', paddingAll: '20px',
         contents: [
-          // ── Title ──
-          {
-            type: 'text',
-            text: 'ประวัติการแจ้ง',
-            size: 'xl',
-            weight: 'bold',
-            color: '#1E293B',
-          },
-          // ── Header separator ──
-          {
-            type: 'separator',
-            margin: 'lg',
-            color: '#3B82F6',
-          },
-          // ── Column headers ──
-          {
-            type: 'box',
-            layout: 'horizontal',
-            margin: 'lg',
-            spacing: 'sm',
-            contents: [
-              { type: 'text', text: 'เวลาที่แจ้ง', size: 'xxs', color: '#64748B', weight: 'bold', flex: 3 },
-              { type: 'text', text: 'ปัญหาที่แจ้ง', size: 'xxs', color: '#64748B', weight: 'bold', flex: 5 },
-              { type: 'text', text: 'สถานะ', size: 'xxs', color: '#64748B', weight: 'bold', flex: 3, align: 'center' },
-              { type: 'text', text: 'ดูรายละเอียด', size: 'xxs', color: '#64748B', weight: 'bold', flex: 2, align: 'center' },
-            ],
-          },
-          // ── Separator under headers ──
-          {
-            type: 'separator',
-            margin: 'sm',
-            color: '#CBD5E1',
-          },
-          // ── Ticket rows ──
-          ...ticketRows,
-          // ── Bottom separator ──
-          {
-            type: 'separator',
-            margin: 'lg',
-            color: '#3B82F6',
-          },
-          // ── Pagination ──
-          {
-            type: 'box',
-            layout: 'horizontal',
-            margin: 'md',
-            justifyContent: 'flex-end',
-            spacing: 'sm',
-            contents: paginationContents,
-          },
+          { type: 'text', text: 'ประวัติการแจ้งซ่อม', color: '#FFFFFF', size: 'lg', weight: 'bold' },
+          { type: 'text', text: `ทั้งหมด ${totalTickets} รายการ`, color: '#94A3B8', size: 'xs', margin: 'sm' },
         ],
+      },
+      body: {
+        type: 'box', layout: 'vertical', paddingAll: '16px', paddingTop: '8px', backgroundColor: '#F8FAFC',
+        contents: [...ticketCards],
+      },
+      footer: {
+        type: 'box', layout: 'horizontal', paddingAll: '12px', backgroundColor: '#F1F5F9',
+        spacing: 'sm', alignItems: 'center', contents: pageParts,
       },
     };
   }
+
+
 
   private getUrgencyConfig(level: string): { color: string; text: string } {
     return ({
