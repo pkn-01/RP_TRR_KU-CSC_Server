@@ -325,9 +325,11 @@ export class LineOAWebhookService {
         case 'create_repair':
           await this.handleCreateRepairPostback(lineUserId, replyToken);
           break;
-        case 'check_status':
-          await this.handleCheckStatusPostback(lineUserId, replyToken);
+        case 'check_status': {
+          const page = parseInt(params.get('page') || '1', 10);
+          await this.handleCheckStatusPostback(lineUserId, replyToken, page);
           break;
+        }
         case 'faq':
           await this.handleFAQPostback(lineUserId, replyToken);
           break;
@@ -393,7 +395,7 @@ export class LineOAWebhookService {
    * Query tickets ทั้งจาก LineOALink (logged-in) และ reporterLineUserId (direct)
    * แสดงเป็น Flex Message Carousel ตาม mockup design
    */
-  private async handleCheckStatusPostback(lineUserId: string, replyToken?: string) {
+  private async handleCheckStatusPostback(lineUserId: string, replyToken?: string, page = 1) {
     try {
       // 1. Query tickets จาก LineOALink → user.repairTickets (ผู้ใช้ที่ login)
       const lineLink = await this.prisma.lineOALink.findFirst({
@@ -437,8 +439,7 @@ export class LineOAWebhookService {
 
       // Sort by createdAt desc
       const allTickets = Array.from(ticketMap.values())
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        .slice(0, 10);
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
       // 4. ถ้าไม่มี ticket เลย
       if (allTickets.length === 0) {
@@ -451,7 +452,7 @@ export class LineOAWebhookService {
       }
 
       // 5. สร้าง Flex Message Carousel
-      const carouselContents = this.notificationService.createCheckStatusCarousel(allTickets);
+      const carouselContents = this.notificationService.createCheckStatusCarousel(allTickets, page);
 
       const flexMessage: line.Message = {
         type: 'flex',

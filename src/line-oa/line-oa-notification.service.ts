@@ -1342,73 +1342,74 @@ export class LineOANotificationService {
 
   /**
    * สร้าง Flex Message แบบตาราง "ประวัติการแจ้ง"
-   * แสดงเลขรหัส, ปัญหาที่แจ้ง, ระดับความเร่งด่วน, สถานะ, ดูรายละเอียด
+   * แสดงเวลาที่แจ้ง, ปัญหาที่แจ้ง, สถานะ, ดูรายละเอียด
+   * สีพื้นหลังแถวตามความเร่งด่วน (เทา=ปกติ, อัมพัน=ด่วน, แดง=ด่วนที่สุด)
    */
-  createCheckStatusCarousel(tickets: any[]): any {
+  createCheckStatusCarousel(tickets: any[], page = 1, pageSize = 3): any {
     let frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc.vercel.app';
     try {
       frontendUrl = new URL(frontendUrl).origin;
     } catch (e) {}
 
-    const displayTickets = tickets.slice(0, 5); // จำกัด 5 รายการ เพื่อไม่ให้ bubble ใหญ่เกิน
+    const totalTickets = tickets.length;
+    const totalPages = Math.ceil(totalTickets / pageSize);
+    const currentPage = Math.min(Math.max(page, 1), totalPages);
+    const startIdx = (currentPage - 1) * pageSize;
+    const displayTickets = tickets.slice(startIdx, startIdx + pageSize);
+
+    // สีพื้นหลังแถวตามความเร่งด่วน
+    const urgencyRowColors: Record<string, string> = {
+      NORMAL: '#D1D5DB',     // เทา
+      URGENT: '#FBBF24',     // อัมพัน/amber
+      CRITICAL: '#EF4444',   // แดง
+    };
 
     // สร้าง rows สำหรับแต่ละ ticket
     const ticketRows: any[] = [];
-    displayTickets.forEach((ticket, index) => {
-      const urgencyConfig = this.getUrgencyConfig(ticket.urgency);
+    displayTickets.forEach((ticket) => {
       const statusConfig = this.getStatusConfig(ticket.status);
+      const rowBgColor = urgencyRowColors[ticket.urgency] || '#D1D5DB';
 
-      // Separator ระหว่าง rows
-      if (index > 0) {
-        ticketRows.push({
-          type: 'separator',
-          margin: 'sm',
-          color: '#E2E8F0',
-        });
-      }
+      const formattedDate = new Intl.DateTimeFormat('th-TH', {
+        day: 'numeric', month: 'numeric', year: 'numeric',
+        timeZone: 'Asia/Bangkok',
+      }).format(new Date(ticket.createdAt));
 
       ticketRows.push({
         type: 'box',
         layout: 'horizontal',
-        margin: 'md',
+        backgroundColor: rowBgColor,
+        paddingAll: '10px',
         spacing: 'sm',
         alignItems: 'center',
+        margin: 'sm',
+        cornerRadius: 'md',
         contents: [
-          // เลขรหัส
+          // เวลาที่แจ้ง
           {
             type: 'text',
-            text: ticket.ticketCode,
-            size: 'xxs',
+            text: formattedDate,
+            size: 'xs',
             color: '#1E293B',
-            flex: 4,
+            flex: 3,
             wrap: false,
           },
           // ปัญหาที่แจ้ง
           {
             type: 'text',
             text: ticket.problemTitle,
-            size: 'xxs',
-            color: '#334155',
-            flex: 4,
+            size: 'xs',
+            color: '#1E293B',
+            flex: 5,
             wrap: true,
             maxLines: 2,
-          },
-          // ระดับความเร่งด่วน
-          {
-            type: 'text',
-            text: urgencyConfig.text,
-            size: 'xxs',
-            color: urgencyConfig.color,
-            flex: 3,
-            align: 'center',
-            weight: 'bold',
           },
           // สถานะ
           {
             type: 'text',
             text: statusConfig.text,
-            size: 'xxs',
-            color: statusConfig.color,
+            size: 'xs',
+            color: '#1E293B',
             flex: 3,
             align: 'center',
             weight: 'bold',
@@ -1424,17 +1425,78 @@ export class LineOANotificationService {
                 action: {
                   type: 'uri',
                   label: 'ดู',
-                  uri: `${frontendUrl}/repairs/${ticket.id}`,
+                  uri: `${frontendUrl}/repairs/track/${ticket.ticketCode}`,
                 },
                 style: 'secondary',
                 height: 'sm',
-                color: '#E2E8F0',
+                color: '#FFFFFF',
               },
             ],
           },
         ],
       });
     });
+
+    // สร้าง pagination footer
+    const paginationContents: any[] = [
+      {
+        type: 'text',
+        text: `${currentPage}-${totalPages}`,
+        size: 'sm',
+        color: '#64748B',
+        flex: 0,
+        align: 'end',
+        gravity: 'center',
+      },
+    ];
+
+    // ปุ่ม < (previous)
+    if (currentPage > 1) {
+      paginationContents.push({
+        type: 'button',
+        action: {
+          type: 'postback',
+          label: '<',
+          data: `action=check_status&page=${currentPage - 1}`,
+          displayText: 'ตรวจสอบสถานะ',
+        },
+        style: 'secondary',
+        height: 'sm',
+        flex: 0,
+        color: '#E2E8F0',
+      });
+    } else {
+      paginationContents.push({
+        type: 'text',
+        text: '  ',
+        size: 'sm',
+        flex: 0,
+      });
+    }
+
+    // ปุ่ม > (next)
+    if (currentPage < totalPages) {
+      paginationContents.push({
+        type: 'button',
+        action: {
+          type: 'postback',
+          label: '>',
+          data: `action=check_status&page=${currentPage + 1}`,
+          displayText: 'ตรวจสอบสถานะ',
+        },
+        style: 'secondary',
+        height: 'sm',
+        flex: 0,
+        color: '#E2E8F0',
+      });
+    } else {
+      paginationContents.push({
+        type: 'text',
+        text: '  ',
+        size: 'sm',
+        flex: 0,
+      });
+    }
 
     return {
       type: 'bubble',
@@ -1466,14 +1528,13 @@ export class LineOANotificationService {
             margin: 'lg',
             spacing: 'sm',
             contents: [
-              { type: 'text', text: 'เลขรหัส', size: 'xxs', color: '#64748B', weight: 'bold', flex: 4 },
-              { type: 'text', text: 'ปัญหาที่แจ้ง', size: 'xxs', color: '#64748B', weight: 'bold', flex: 4 },
-              { type: 'text', text: 'ความเร่งด่วน', size: 'xxs', color: '#64748B', weight: 'bold', flex: 3, align: 'center' },
+              { type: 'text', text: 'เวลาที่แจ้ง', size: 'xxs', color: '#64748B', weight: 'bold', flex: 3 },
+              { type: 'text', text: 'ปัญหาที่แจ้ง', size: 'xxs', color: '#64748B', weight: 'bold', flex: 5 },
               { type: 'text', text: 'สถานะ', size: 'xxs', color: '#64748B', weight: 'bold', flex: 3, align: 'center' },
               { type: 'text', text: 'ดูรายละเอียด', size: 'xxs', color: '#64748B', weight: 'bold', flex: 2, align: 'center' },
             ],
           },
-          // ── Separator under column headers ──
+          // ── Separator under headers ──
           {
             type: 'separator',
             margin: 'sm',
@@ -1486,6 +1547,15 @@ export class LineOANotificationService {
             type: 'separator',
             margin: 'lg',
             color: '#3B82F6',
+          },
+          // ── Pagination ──
+          {
+            type: 'box',
+            layout: 'horizontal',
+            margin: 'md',
+            justifyContent: 'flex-end',
+            spacing: 'sm',
+            contents: paginationContents,
           },
         ],
       },
