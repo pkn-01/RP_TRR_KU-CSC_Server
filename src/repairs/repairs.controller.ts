@@ -78,15 +78,30 @@ export class RepairsController {
         dto.problemTitle = rawTitle;
       }
 
-      // SECURITY: Validate lineUserId format (LINE User IDs = U + 32 hex chars)
-      const lineUserIdRegex = /^U[0-9a-f]{32}$/;
-      const rawLineUserId = body.reporterLineId || body.lineUserId;
-      const validatedLineUserId = (rawLineUserId && lineUserIdRegex.test(rawLineUserId))
-        ? rawLineUserId
-        : undefined;
+      // SECURITY: Verify LINE ID Token
+      const idToken = body.idToken;
+      let validatedLineUserId: string | undefined;
 
-      if (rawLineUserId && !validatedLineUserId) {
-        this.logger.warn(`SECURITY: Invalid lineUserId format rejected: ${rawLineUserId}`);
+      if (idToken) {
+        try {
+          const response = await fetch('https://api.line.me/oauth2/v2.1/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              id_token: idToken,
+              client_id: (process.env.LINE_LIFF_ID || '').replace(/^"|"$/g, ''),
+            }),
+          });
+          const lineProfile = await response.json();
+
+          if (!response.ok || lineProfile.error) {
+            this.logger.error(`LINE token verification failed: ${JSON.stringify(lineProfile)}`);
+            throw new ForbiddenException('Invalid LINE ID Token');
+          }
+          validatedLineUserId = lineProfile.sub;
+        } catch (error) {
+          throw new ForbiddenException('Failed to verify LINE ID Token');
+        }
       }
 
       dto.reporterLineId = validatedLineUserId || 'Guest';

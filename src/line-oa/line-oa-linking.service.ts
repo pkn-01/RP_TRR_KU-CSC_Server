@@ -257,6 +257,13 @@ export class LineOALinkingService {
         return { success: false, error: 'รหัสนี้ถูกผูกกับ LINE แล้ว' };
       }
 
+      // Check expiration (24 hours)
+      const ticketAgeMs = Date.now() - ticket.createdAt.getTime();
+      const expirationMs = 24 * 60 * 60 * 1000; // 24 hours
+      if (ticketAgeMs > expirationMs) {
+        return { success: false, error: 'รหัสนี้หมดอายุแล้ว (เกิน 24 ชั่วโมง)' };
+      }
+
       await this.prisma.repairTicket.update({
         where: { id: ticket.id },
         data: { reporterLineUserId: lineUserId },

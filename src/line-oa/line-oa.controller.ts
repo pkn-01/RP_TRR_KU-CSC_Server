@@ -10,7 +10,7 @@ import {
   Req,
   RawBodyRequest,
 } from '@nestjs/common';
-import { SkipThrottle } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { LineOAService } from './line-oa.service';
 import { LineOALinkingService } from './line-oa-linking.service';
@@ -31,7 +31,7 @@ export class LineOAController {
    * LINE Webhook Endpoint
    */
   @Public()
-  @SkipThrottle()
+  @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 requests per minute
   @Post('webhook')
   @HttpCode(200)
   async handleWebhook(

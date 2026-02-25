@@ -11,6 +11,7 @@ export class LineOAWebhookService {
   private readonly channelSecret = process.env.LINE_CHANNEL_SECRET;
   private readonly channelAccessToken = process.env.LINE_ACCESS_TOKEN || '';
   private readonly liffId = process.env.LINE_LIFF_ID || '';
+  private readonly client: line.Client;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -22,11 +23,14 @@ export class LineOAWebhookService {
     this.channelAccessToken = (process.env.LINE_ACCESS_TOKEN || '').replace(/^"|"$/g, '');
     this.liffId = (process.env.LINE_LIFF_ID || '').replace(/^"|"$/g, '');
 
+    this.client = new line.Client({
+      channelAccessToken: this.channelAccessToken,
+    });
+
     // Startup diagnostic: check if LINE credentials are loaded
     this.logger.log(`=== LINE Webhook Service Initialized ===`);
-    this.logger.log(`LINE_ACCESS_TOKEN: ${this.channelAccessToken ? `SET (${this.channelAccessToken.substring(0, 10)}...)` : '❌ MISSING'}`);
-    this.logger.log(`LINE_CHANNEL_SECRET: ${this.channelSecret ? `SET (${this.channelSecret.substring(0, 6)}...)` : '❌ MISSING'}`);
-    this.logger.log(`LINE_LIFF_ID: ${this.liffId ? `SET (${this.liffId})` : ' MISSING'}`);
+    this.logger.log(`LINE_CREDENTIALS: ${this.channelAccessToken && this.channelSecret ? 'SET' : '❌ MISSING'}`);
+    this.logger.log(`LINE_LIFF_ID: ${this.liffId ? 'SET' : ' MISSING'}`);
 
     if (!this.channelSecret) {
       this.logger.error('LINE_CHANNEL_SECRET is missing! Webhook signature verification will fail.');
@@ -49,15 +53,8 @@ export class LineOAWebhookService {
 
     // ตรวจสอบลายเซนต์
     if (!this.verifySignature(bodyBuffer, signature)) {
-      this.logger.error(`Invalid webhook signature. Body size: ${bodyBuffer.length}, Signature: ${signature}`);
-      if (!rawBody) {
-        this.logger.error('rawBody is missing! Signature verification failed because JSON.stringify was used.');
-      } else {
-        this.logger.error('rawBody is present but signature mismatch. Check LINE_CHANNEL_SECRET.');
-      }
-      
-      this.logger.warn('WARNING: Signature verification failed! But PROCEEDING for debugging purposes.');
-      // throw new ForbiddenException('Invalid signature'); // DISABLED FOR DEBUGGING
+      this.logger.error(`Invalid webhook signature. Body size: ${bodyBuffer.length}, Signature: ${signature ? 'present' : 'missing'}`);
+      throw new ForbiddenException('Invalid signature');
     } else {
       this.logger.debug('✅ Signature verified successfully');
     }
@@ -67,8 +64,9 @@ export class LineOAWebhookService {
       for (const event of body.events) {
         try {
             await this.handleEvent(event);
-        } catch (err) {
-            this.logger.error(`Error handling event: ${err.message}`, err.stack);
+        } catch (err: any) {
+            // Log only message, not full stack track to console for production
+            this.logger.error(`Error handling event: ${err.message}`);
         }
       }
     }
@@ -81,14 +79,50 @@ export class LineOAWebhookService {
    * ทุก webhook request ต้องลงนามด้วย HMAC SHA256
    */
   private verifySignature(body: Buffer, signature: string): boolean {
-    if (!this.channelSecret) return false;
+    if (!this.channelSecret || !signature) return false;
     
     const hash = crypto
       .createHmac('sha256', this.channelSecret)
       .update(body)
       .digest('base64');
 
-    return hash === signature;
+    const hashBuffer = Buffer.from(hash);
+    const signatureBuffer = Buffer.from(signature);
+
+    if (hashBuffer.length !== signatureBuffer.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(hashBuffer, signatureBuffer);
+  }
+
+  /**
+   * Helper ส่งข้อความ (Retry on failure)
+   */
+  private async executeWithRetry<T>(operation: () => Promise<T>, retries = 2): Promise<T> {
+    let lastError: any;
+    for (let i = 0; i <= retries; i++) {
+        try {
+            return await operation();
+        } catch (error) {
+            lastError = error;
+            if (i < retries) {
+                this.logger.warn(`LINE API call failed. Retrying... (${i + 1}/${retries})`);
+                await new Promise(res => setTimeout(res, 500 * (i + 1))); // Simple backoff
+            }
+        }
+    }
+    throw lastError;
+  }
+
+  private async sendMessage(lineUserId: string, message: line.Message, replyToken?: string) {
+    await this.executeWithRetry(async () => {
+      if (replyToken) {
+        await this.client.replyMessage(replyToken, message);
+      } else {
+        await this.client.pushMessage(lineUserId, message);
+      }
+    });
   }
 
 
@@ -129,24 +163,16 @@ export class LineOAWebhookService {
     this.logger.log(`User ${lineUserId} followed the OA`);
 
     try {
-      const client = new line.Client({
-        channelAccessToken: this.channelAccessToken,
-      });
-
       // ส่ง welcome message
       const welcomeMessage: line.Message = {
         type: 'text',
         text: 'ยินดีต้อนรับเข้าสู่ระบบแจ้งซ่อมอุปกรณ์ IT 🎉\nกรุณาเลือกเมนูด้านล่างเพื่อเริ่มต้นใช้งาน',
       };
 
-      if (replyToken) {
-        await client.replyMessage(replyToken, welcomeMessage);
-      } else {
-        await client.pushMessage(lineUserId, welcomeMessage);
-      }
+      await this.sendMessage(lineUserId, welcomeMessage, replyToken);
 
       // Set rich menu
-      await this.setRichMenu(lineUserId, client);
+      await this.setRichMenu(lineUserId);
     } catch (error) {
       this.logger.error(`Failed to handle follow event for ${lineUserId}:`, error);
     }
@@ -181,22 +207,18 @@ export class LineOAWebhookService {
 
     if (message.type === 'text') {
       try {
-        const client = new line.Client({
-          channelAccessToken: this.channelAccessToken,
-        });
-
         const text = message.text.trim();
         const textUpper = text.toUpperCase();
 
         // Check if message is a linking code (e.g., TRR-10022569001-ABCD)
         if (textUpper.match(/^TRR-\d+-[A-Z0-9]{4}$/)) {
-          await this.handleLinkingCode(lineUserId, textUpper, client, replyToken);
+          await this.handleLinkingCode(lineUserId, textUpper, replyToken);
           return;
         }
 
         // Keyword: "แจ้งซ่อม" → ตอบกลับด้วย URL พร้อม lineUserId
         if (text.includes('แจ้งซ่อม')) {
-          await this.handleRepairKeyword(lineUserId, client, replyToken);
+          await this.handleRepairKeyword(lineUserId, replyToken);
           return;
         }
 
@@ -206,12 +228,8 @@ export class LineOAWebhookService {
           text: `ขอบคุณสำหรับข้อความของคุณ\n\nหากต้องการแจ้งซ่อม พิมพ์ "แจ้งซ่อม"\nหากต้องการรับแจ้งเตือนสถานะการซ่อม กรุณาส่งรหัสที่ได้รับหลังแจ้งซ่อม (เช่น TRR-10022569001-ABCD)`,
         };
 
-        if (replyToken) {
-          await client.replyMessage(replyToken, reply);
-        } else {
-          await client.pushMessage(lineUserId, reply);
-        }
-      } catch (error) {
+        await this.sendMessage(lineUserId, reply, replyToken);
+      } catch (error: any) {
         this.logger.error(`Failed to reply to message from ${lineUserId}:`, error?.message || error);
         if (error?.statusCode) {
           this.logger.error(`LINE API Status: ${error.statusCode}, Body: ${JSON.stringify(error.originalError?.response?.data || error.body || 'N/A')}`);
@@ -224,7 +242,7 @@ export class LineOAWebhookService {
    * Handle "แจ้งซ่อม" keyword → ส่ง URL พร้อม lineUserId เพื่อเปิดฟอร์มแจ้งซ่อม
    * ผู้ใช้จะได้รับ notification อัตโนมัติเพราะ lineUserId ถูกส่งไปกับ URL
    */
-  private async handleRepairKeyword(lineUserId: string, client: line.Client, replyToken?: string) {
+  private async handleRepairKeyword(lineUserId: string, replyToken?: string) {
     try {
       // User requested direct URL with lineUserId (bypass LIFF shortlink)
       const frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc-2026.vercel.app';
@@ -237,28 +255,23 @@ export class LineOAWebhookService {
         text: `แจ้งซ่อมกดลิ้งนี้\n${repairFormUrl}`,
       };
 
-      if (replyToken) {
-        await client.replyMessage(replyToken, message);
-      } else {
-        await client.pushMessage(lineUserId, message);
-      }
+      await this.sendMessage(lineUserId, message, replyToken);
     } catch (error: any) {
       this.logger.error(`Failed to handle repair keyword response: ${error.message}`, error);
       
       // Fallback response if template fails (e.g., if LIFF URL is considered invalid)
-      if (replyToken) {
-        await client.replyMessage(replyToken, {
-          type: 'text',
-          text: `กรุณากดลิงก์เพื่อแจ้งซ่อม: https://liff.line.me/${this.liffId}?action=create`
-        });
-      }
+      const fallback: line.Message = {
+        type: 'text',
+        text: `กรุณากดลิงก์เพื่อแจ้งซ่อม: https://liff.line.me/${this.liffId}?action=create`
+      };
+      await this.sendMessage(lineUserId, fallback, replyToken);
     }
   }
 
   /**
    * Handle linking code from reporter
    */
-  private async handleLinkingCode(lineUserId: string, linkingCode: string, client: line.Client, replyToken?: string) {
+  private async handleLinkingCode(lineUserId: string, linkingCode: string, replyToken?: string) {
     try {
       const result = await this.linkingService.linkReporterLine(linkingCode, lineUserId);
 
@@ -275,11 +288,7 @@ export class LineOAWebhookService {
         };
       }
 
-      if (replyToken) {
-        await client.replyMessage(replyToken, reply);
-      } else {
-        await client.pushMessage(lineUserId, reply);
-      }
+      await this.sendMessage(lineUserId, reply, replyToken);
     } catch (error) {
       this.logger.error('Error handling linking code:', error);
       const errorMessage: line.Message = {
@@ -287,11 +296,7 @@ export class LineOAWebhookService {
         text: 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
       };
       
-      if (replyToken) {
-        await client.replyMessage(replyToken, errorMessage);
-      } else {
-        await client.pushMessage(lineUserId, errorMessage);
-      }
+      await this.sendMessage(lineUserId, errorMessage, replyToken);
     }
   }
 
@@ -306,26 +311,22 @@ export class LineOAWebhookService {
     this.logger.log(`Received postback from ${lineUserId}: ${postbackData}`);
 
     try {
-      const client = new line.Client({
-        channelAccessToken: this.channelAccessToken,
-      });
-
       // Parse postback data
       const params = new URLSearchParams(postbackData);
       const action = params.get('action');
 
       switch (action) {
         case 'create_repair':
-          await this.handleCreateRepairPostback(lineUserId, client, replyToken);
+          await this.handleCreateRepairPostback(lineUserId, replyToken);
           break;
         case 'check_status':
-          await this.handleCheckStatusPostback(lineUserId, client, replyToken);
+          await this.handleCheckStatusPostback(lineUserId, replyToken);
           break;
         case 'faq':
-          await this.handleFAQPostback(lineUserId, client, replyToken);
+          await this.handleFAQPostback(lineUserId, replyToken);
           break;
         case 'contact':
-          await this.handleContactPostback(lineUserId, client, replyToken);
+          await this.handleContactPostback(lineUserId, replyToken);
           break;
         default:
           this.logger.warn(`Unknown postback action: ${action}`);
@@ -338,15 +339,15 @@ export class LineOAWebhookService {
   /**
    * Set Rich Menu สำหรับ User
    */
-  private async setRichMenu(lineUserId: string, client: line.Client) {
+  private async setRichMenu(lineUserId: string) {
     try {
       // ID ของ rich menu ที่สร้างไว้ใน LINE Developers Console
       // ต้องสร้าง rich menu ใน LINE Console แล้ววาง ID ที่นี่
       const richMenuId = process.env.LINE_RICH_MENU_ID || '';
 
       if (richMenuId) {
-        // Link rich menu to user (ถ้า API รองรับ)
-        // await client.linkRichMenuToUser(lineUserId, richMenuId);
+        // Link rich menu to user
+        await this.client.linkRichMenuToUser(lineUserId, richMenuId);
         this.logger.log(`Rich menu linked to user ${lineUserId}`);
       }
     } catch (error) {
@@ -357,7 +358,7 @@ export class LineOAWebhookService {
   /**
    * Handle "Create Repair" postback - เปิด LIFF form พร้อม lineUserId
    */
-  private async handleCreateRepairPostback(lineUserId: string, client: line.Client, replyToken?: string) {
+  private async handleCreateRepairPostback(lineUserId: string, replyToken?: string) {
     const frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc-2026.vercel.app';
     const repairFormUrl = `${frontendUrl}/repairs/liff/form?lineUserId=${lineUserId}`;
 
@@ -379,17 +380,13 @@ export class LineOAWebhookService {
       },
     };
 
-    if (replyToken) {
-      await client.replyMessage(replyToken, message);
-    } else {
-      await client.pushMessage(lineUserId, message);
-    }
+    await this.sendMessage(lineUserId, message, replyToken);
   }
 
   /**
    * Handle "Check Status" postback
    */
-  private async handleCheckStatusPostback(lineUserId: string, client: line.Client, replyToken?: string) {
+  private async handleCheckStatusPostback(lineUserId: string, replyToken?: string) {
     try {
       // ค้นหาการเชื่อมต่อ LINE ของผู้ใช้
       const lineLink = await this.prisma.lineOALink.findFirst({
@@ -414,17 +411,13 @@ export class LineOAWebhookService {
           type: 'text',
           text: '📋 ไม่พบรายการแจ้งซ่อมของคุณ\n\nกรุณากด "🔧 แจ้งซ่อม" เพื่อสร้างรายการแจ้งซ่อมใหม่',
         };
-        if (replyToken) {
-          await client.replyMessage(replyToken, message);
-        } else {
-          await client.pushMessage(lineUserId, message);
-        }
+        await this.sendMessage(lineUserId, message, replyToken);
         return;
       }
 
       // สร้าง message แสดงสถานะ
       let statusText = '📋 รายการแจ้งซ่อมของคุณ\n\n';
-      const emojis = {
+      const emojis: Record<string, string> = {
         PENDING: '⏳',
         IN_PROGRESS: '🟡',
         WAITING_PARTS: '🔵',
@@ -449,29 +442,21 @@ export class LineOAWebhookService {
         text: statusText,
       };
 
-      if (replyToken) {
-        await client.replyMessage(replyToken, message);
-      } else {
-        await client.pushMessage(lineUserId, message);
-      }
+      await this.sendMessage(lineUserId, message, replyToken);
     } catch (error) {
       this.logger.error(`Failed to get user tickets:`, error);
       const message: line.Message = {
         type: 'text',
         text: 'เกิดข้อผิดพลาดในการตรวจสอบสถานะ กรุณาลองใหม่อีกครั้ง',
       };
-      if (replyToken) {
-        await client.replyMessage(replyToken, message);
-      } else {
-        await client.pushMessage(lineUserId, message);
-      }
+      await this.sendMessage(lineUserId, message, replyToken);
     }
   }
 
   /**
    * Handle "FAQ" postback
    */
-  private async handleFAQPostback(lineUserId: string, client: line.Client, replyToken?: string) {
+  private async handleFAQPostback(lineUserId: string, replyToken?: string) {
     const message: line.Message = {
       type: 'text',
       text: `❓ คำถามที่พบบ่อย (FAQ)
@@ -492,17 +477,13 @@ export class LineOAWebhookService {
 → กด "📞 ติดต่อฝ่าย IT" เพื่อดูข้อมูลติดต่อ`,
     };
 
-    if (replyToken) {
-      await client.replyMessage(replyToken, message);
-    } else {
-      await client.pushMessage(lineUserId, message);
-    }
+    await this.sendMessage(lineUserId, message, replyToken);
   }
 
   /**
    * Handle "Contact" postback
    */
-  private async handleContactPostback(lineUserId: string, client: line.Client, replyToken?: string) {
+  private async handleContactPostback(lineUserId: string, replyToken?: string) {
     const message: line.Message = {
       type: 'text',
       text: `📞 ติดต่อฝ่าย IT
@@ -519,10 +500,6 @@ export class LineOAWebhookService {
 โทรศัพท์: 081-456-7890 (24 ชม.)`,
     };
 
-    if (replyToken) {
-      await client.replyMessage(replyToken, message);
-    } else {
-      await client.pushMessage(lineUserId, message);
-    }
+    await this.sendMessage(lineUserId, message, replyToken);
   }
 }
