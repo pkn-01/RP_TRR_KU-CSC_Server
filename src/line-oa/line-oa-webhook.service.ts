@@ -225,6 +225,12 @@ export class LineOAWebhookService {
           return;
         }
 
+        // Keyword: "ตรวจสอบสถานะ" → แสดง Flex Message Carousel สถานะการแจ้งซ่อม
+        if (text.includes('ตรวจสอบสถานะ')) {
+          await this.handleCheckStatusPostback(lineUserId, replyToken);
+          return;
+        }
+
         // Default response
         const reply: line.Message = {
           type: 'text',
