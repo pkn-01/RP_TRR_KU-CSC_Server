@@ -5,6 +5,7 @@ import { UpdateDepartmentDto } from './dto/update-department.dto';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
+import { Public } from '../auth/public.decorator';
 
 @Controller('api/departments')
 @UseGuards(RolesGuard)
@@ -18,6 +19,7 @@ export class DepartmentsController {
   }
 
   @Get()
+  @Public()
   findAll() {
     return this.departmentsService.findAll();
   }
