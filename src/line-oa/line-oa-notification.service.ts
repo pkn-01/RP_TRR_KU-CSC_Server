@@ -1462,7 +1462,7 @@ export class LineOANotificationService {
                   // ปุ่ม "ดูข้อมูล" แบบเรียบหรู
                   {
                     type: 'text',
-                    text: 'ดูรายละเอียด ›',
+                    text: 'ดู้ข้อมูล ›',
                     size: 'xs',
                     color: '#3B82F6',
                     weight: 'bold',
