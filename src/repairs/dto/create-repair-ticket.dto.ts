@@ -20,6 +20,10 @@ export class CreateRepairTicketDto {
   @IsOptional()
   @IsString()
   reporterLineId?: string;
+  
+  @IsOptional()
+  @IsString()
+  accessToken?: string;
 
   @IsEnum(ProblemCategory)
   problemCategory: ProblemCategory;

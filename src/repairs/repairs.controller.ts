@@ -78,35 +78,28 @@ export class RepairsController {
         dto.problemTitle = rawTitle;
       }
 
-      // SECURITY: Verify LINE ID Token
-      const idToken = body.idToken;
+      // SECURITY: Verify LINE Access Token to prevent forgery
+      const accessToken = body.accessToken;
       let validatedLineUserId: string | undefined;
 
-      if (idToken) {
+      if (accessToken) {
         try {
-          const rawLiffId = (process.env.LINE_LIFF_ID || '').replace(/^"|"$/g, '');
-          const clientId = process.env.LINE_LOGIN_CHANNEL_ID || rawLiffId.split('-')[0];
-          
-          this.logger.log(`Verifying ID token for clientId: ${clientId}`);
+          this.logger.log(`Verifying Access token for user profile...`);
 
-          const response = await fetch('https://api.line.me/oauth2/v2.1/verify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-              id_token: idToken,
-              client_id: clientId,
-            }),
+          const response = await fetch('https://api.line.me/v2/profile', {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${accessToken}` },
           });
           const lineProfile = await response.json();
 
           if (!response.ok || lineProfile.error) {
-            this.logger.error(`LINE token verification failed: ${JSON.stringify(lineProfile)} (Status: ${response.status})`);
-            throw new ForbiddenException(`Invalid LINE ID Token: ${lineProfile.error_description || 'Unknown error'}`);
+            this.logger.error(`LINE profile fetch failed: ${JSON.stringify(lineProfile)} (Status: ${response.status})`);
+            throw new ForbiddenException(`Invalid LINE Access Token: ${lineProfile.message || 'Unknown error'}`);
           }
-          validatedLineUserId = lineProfile.sub;
+          validatedLineUserId = lineProfile.userId;
         } catch (error: any) {
           this.logger.error(`Token verification exception: ${error.message}`, error.stack);
-          throw new ForbiddenException(`Failed to verify LINE ID Token: ${error.message}`);
+          throw new ForbiddenException(`Failed to verify LINE Access Token: ${error.message}`);
         }
       }
 
