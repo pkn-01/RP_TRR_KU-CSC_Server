@@ -1462,7 +1462,7 @@ export class LineOANotificationService {
                   // ปุ่ม "ดูข้อมูล" แบบเรียบหรู
                   {
                     type: 'text',
-                    text: 'ดู้ข้อมูล ›',
+                    text: 'ดูข้อมูล ›',
                     size: 'xs',
                     color: '#3B82F6',
                     weight: 'bold',
@@ -1501,7 +1501,7 @@ export class LineOANotificationService {
           type: 'postback',
           label: 'ก่อนหน้า',
           data: `action=check_status&page=${currentPage - 1}`,
-          displayText: 'ตรวจสอบสถานะ',
+          displayText: `ไปหน้าที่ ${currentPage - 1}`,
         },
         style: 'link',
         height: 'sm',
@@ -1516,7 +1516,7 @@ export class LineOANotificationService {
           type: 'postback',
           label: 'ถัดไป',
           data: `action=check_status&page=${currentPage + 1}`,
-          displayText: 'ตรวจสอบสถานะ',
+          displayText: `ไปหน้าที่ ${currentPage + 1}`,
         },
         style: 'link',
         height: 'sm',
@@ -1589,9 +1589,9 @@ export class LineOANotificationService {
 
   private getStatusConfig(status: string): { color: string; text: string } {
     return ({
-      PENDING: { color: COLORS.WARNING, text: 'รอดำเนินการ' },
+      PENDING: { color: COLORS.INFO, text: 'รอดำเนินการ' },
       ASSIGNED: { color: COLORS.INFO, text: 'มอบหมายแล้ว' },
-      IN_PROGRESS: { color: COLORS.INFO, text: 'กำลังดำเนินการ' },
+      IN_PROGRESS: { color: COLORS.WARNING, text: 'กำลังดำเนินการ' },
       COMPLETED: { color: COLORS.SUCCESS, text: 'เสร็จสิ้น' },
       CANCELLED: { color: '#EF4444', text: 'ยกเลิก' },
     }[status] || { color: COLORS.PRIMARY, text: status });
