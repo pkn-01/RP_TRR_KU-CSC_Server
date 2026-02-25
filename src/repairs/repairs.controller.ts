@@ -84,12 +84,15 @@ export class RepairsController {
 
       if (idToken) {
         try {
+          const rawLiffId = (process.env.LINE_LIFF_ID || '').replace(/^"|"$/g, '');
+          const clientId = process.env.LINE_LOGIN_CHANNEL_ID || rawLiffId.split('-')[0];
+
           const response = await fetch('https://api.line.me/oauth2/v2.1/verify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
               id_token: idToken,
-              client_id: (process.env.LINE_LIFF_ID || '').replace(/^"|"$/g, ''),
+              client_id: clientId,
             }),
           });
           const lineProfile = await response.json();
