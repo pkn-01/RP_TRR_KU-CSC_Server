@@ -1336,6 +1336,124 @@ export class LineOANotificationService {
     };
   }
 
+  /* =======================
+     CHECK STATUS FLEX CAROUSEL
+  ======================= */
+
+  /**
+   * สร้าง Flex Message Carousel สำหรับแสดงสถานะการแจ้งซ่อมทั้งหมดของผู้ใช้
+   * ตาม mockup: แต่ละ bubble มี header สีตามสถานะ, badge ความเร่งด่วน, รูปภาพ, ticket code, ปัญหา, วันที่
+   */
+  createCheckStatusCarousel(tickets: any[]): any {
+    // LINE Carousel supports max 12 bubbles
+    const bubbles = tickets.slice(0, 12).map(ticket => this.createCheckStatusFlexBubble(ticket));
+    
+    return {
+      type: 'carousel',
+      contents: bubbles,
+    };
+  }
+
+  /**
+   * สร้าง Flex bubble สำหรับแสดงสถานะ ticket หนึ่งรายการ
+   */
+  private createCheckStatusFlexBubble(ticket: any): any {
+    const statusConfig = this.getStatusConfig(ticket.status);
+    const urgencyConfig = this.getUrgencyConfig(ticket.urgency);
+
+    // Get first attachment image URL
+    const imageUrl = ticket.attachments?.[0]?.fileUrl || null;
+
+    const formattedDate = new Intl.DateTimeFormat('th-TH', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+      timeZone: 'Asia/Bangkok',
+    }).format(new Date(ticket.createdAt));
+
+    return {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: statusConfig.color,
+        paddingAll: '20px',
+        contents: [
+          {
+            type: 'box',
+            layout: 'horizontal',
+            alignItems: 'center',
+            contents: [
+              { type: 'text', text: 'สถานะการแจ้งซ่อม', color: '#FFFFFFCC', size: 'xs', weight: 'bold', flex: 1 },
+              {
+                type: 'box',
+                layout: 'vertical',
+                backgroundColor: '#FFFFFF33',
+                cornerRadius: 'xl',
+                paddingAll: '4px',
+                paddingStart: '12px',
+                paddingEnd: '12px',
+                flex: 0,
+                contents: [{ type: 'text', text: urgencyConfig.text, color: '#FFFFFF', size: 'xxs', weight: 'bold' }],
+              },
+            ],
+          },
+          { type: 'text', text: statusConfig.text, color: '#FFFFFF', size: 'xxl', weight: 'bold', margin: 'sm' },
+        ],
+      },
+      ...(imageUrl ? {
+        hero: {
+          type: 'image',
+          url: imageUrl,
+          size: 'full',
+          aspectRatio: '20:13',
+          aspectMode: 'cover',
+        },
+      } : {}),
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '20px',
+        backgroundColor: '#FFFFFF',
+        contents: [
+          // ── Ticket Code ──
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: 'หมายเลขงาน', size: 'sm', color: '#64748B', flex: 4 },
+              { type: 'text', text: ticket.ticketCode, size: 'sm', color: '#1E293B', weight: 'bold', flex: 6, align: 'end' },
+            ],
+          },
+          { type: 'separator', margin: 'lg', color: '#F1F5F9' },
+
+          // ── Problem Section ──
+          {
+            type: 'box',
+            layout: 'vertical',
+            margin: 'lg',
+            spacing: 'xs',
+            contents: [
+              { type: 'text', text: 'ปัญหาที่แจ้ง', size: 'xs', color: '#64748B', weight: 'bold' },
+              { type: 'text', text: ticket.problemTitle, size: 'md', weight: 'bold', color: '#1E293B', wrap: true },
+            ],
+          },
+        ],
+      },
+      footer: {
+        type: 'box',
+        layout: 'horizontal',
+        backgroundColor: '#F8FAFC',
+        paddingAll: '16px',
+        justifyContent: 'space-between',
+        contents: [
+          { type: 'text', text: `แจ้งเมื่อ ${formattedDate}`, size: 'xxs', color: '#94A3B8' },
+          { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: '#CBD5E1', weight: 'bold', align: 'end' },
+        ],
+      },
+    };
+  }
+
   private getUrgencyConfig(level: string): { color: string; text: string } {
     return ({
       CRITICAL: { color: COLORS.CRITICAL, text: 'ด่วนที่สุด' },

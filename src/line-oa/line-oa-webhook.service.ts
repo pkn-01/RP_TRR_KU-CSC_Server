@@ -2,6 +2,7 @@ import { Injectable, Logger, UnauthorizedException, ForbiddenException } from '@
 import crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { LineOALinkingService } from './line-oa-linking.service';
+import { LineOANotificationService } from './line-oa-notification.service';
 import { LineOAService } from './line-oa.service';
 import * as line from '@line/bot-sdk';
 
@@ -17,6 +18,7 @@ export class LineOAWebhookService {
     private readonly prisma: PrismaService,
     private readonly linkingService: LineOALinkingService,
     private readonly lineOAService: LineOAService,
+    private readonly notificationService: LineOANotificationService,
   ) {
     // Sanitize env vars 
     this.channelSecret = (process.env.LINE_CHANNEL_SECRET || '').replace(/^"|"$/g, '');
@@ -382,19 +384,22 @@ export class LineOAWebhookService {
 
   /**
    * Handle "Check Status" postback
+   * Query tickets ทั้งจาก LineOALink (logged-in) และ reporterLineUserId (direct)
+   * แสดงเป็น Flex Message Carousel ตาม mockup design
    */
   private async handleCheckStatusPostback(lineUserId: string, replyToken?: string) {
     try {
-      // ค้นหาการเชื่อมต่อ LINE ของผู้ใช้
+      // 1. Query tickets จาก LineOALink → user.repairTickets (ผู้ใช้ที่ login)
       const lineLink = await this.prisma.lineOALink.findFirst({
         where: { lineUserId },
         include: {
           user: {
             include: {
               repairTickets: {
-                take: 5,
+                take: 10,
                 orderBy: { createdAt: 'desc' },
                 include: {
+                  attachments: true,
                   assignees: { include: { user: true } },
                 },
               },
@@ -403,43 +408,52 @@ export class LineOAWebhookService {
         },
       });
 
-      if (!lineLink || !lineLink.user || lineLink.user.repairTickets.length === 0) {
+      const linkedTickets = lineLink?.user?.repairTickets || [];
+
+      // 2. Query tickets จาก reporterLineUserId (ผู้แจ้งตรงที่ไม่ได้ login)
+      const directTickets = await this.prisma.repairTicket.findMany({
+        where: { reporterLineUserId: lineUserId },
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          attachments: true,
+          assignees: { include: { user: true } },
+        },
+      });
+
+      // 3. Merge & deduplicate by ticketCode
+      const ticketMap = new Map<string, any>();
+      [...linkedTickets, ...directTickets].forEach(ticket => {
+        if (!ticketMap.has(ticket.ticketCode)) {
+          ticketMap.set(ticket.ticketCode, ticket);
+        }
+      });
+
+      // Sort by createdAt desc
+      const allTickets = Array.from(ticketMap.values())
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 10);
+
+      // 4. ถ้าไม่มี ticket เลย
+      if (allTickets.length === 0) {
         const message: line.Message = {
           type: 'text',
-          text: '📋 ไม่พบรายการแจ้งซ่อมของคุณ\n\nกรุณากด "🔧 แจ้งซ่อม" เพื่อสร้างรายการแจ้งซ่อมใหม่',
+          text: 'ไม่พบรายการแจ้งซ่อมของคุณ\n\nกรุณากด "แจ้งซ่อม" เพื่อสร้างรายการแจ้งซ่อมใหม่',
         };
         await this.sendMessage(lineUserId, message, replyToken);
         return;
       }
 
-      // สร้าง message แสดงสถานะ
-      let statusText = '📋 รายการแจ้งซ่อมของคุณ\n\n';
-      const emojis: Record<string, string> = {
-        PENDING: '⏳',
-        IN_PROGRESS: '🟡',
-        WAITING_PARTS: '🔵',
-        COMPLETED: '✅',
-        CANCELLED: '❌',
+      // 5. สร้าง Flex Message Carousel
+      const carouselContents = this.notificationService.createCheckStatusCarousel(allTickets);
+
+      const flexMessage: line.Message = {
+        type: 'flex',
+        altText: `ตรวจสอบสถานะ - พบ ${allTickets.length} รายการ`,
+        contents: carouselContents as any,
       };
 
-      lineLink.user.repairTickets.forEach((ticket) => {
-        const emoji = emojis[ticket.status] || '❓';
-        statusText += `${emoji} ${ticket.ticketCode}\n`;
-        statusText += `ปัญหา: ${ticket.problemTitle}\n`;
-        statusText += `สถานะ: ${ticket.status}\n`;
-        if (ticket.assignees && ticket.assignees.length > 0) {
-          const names = ticket.assignees.map((a: any) => a.user.name).join(', ');
-          statusText += `ผู้รับผิดชอบ: ${names}\n`;
-        }
-        statusText += '\n';
-      });
-
-      const message: line.Message = {
-        type: 'text',
-        text: statusText,
-      };
-
-      await this.sendMessage(lineUserId, message, replyToken);
+      await this.sendMessage(lineUserId, flexMessage, replyToken);
     } catch (error) {
       this.logger.error(`Failed to get user tickets:`, error);
       const message: line.Message = {
