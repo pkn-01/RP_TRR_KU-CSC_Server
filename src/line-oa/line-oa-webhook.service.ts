@@ -244,25 +244,22 @@ export class LineOAWebhookService {
    */
   private async handleRepairKeyword(lineUserId: string, replyToken?: string) {
     try {
-      // User requested direct URL with lineUserId (bypass LIFF shortlink)
-      const frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc-2026.vercel.app';
-      const repairFormUrl = `${frontendUrl}/repairs/liff/form?lineUserId=${lineUserId}`;
-
-      this.logger.log(`Sending repair form URL to ${lineUserId}: ${repairFormUrl}`);
+      const liffUrl = `https://liff.line.me/${this.liffId}`;
+      this.logger.log(`Sending repair form LIFF URL to ${lineUserId}: ${liffUrl}`);
 
       const message: line.Message = {
         type: 'text',
-        text: `แจ้งซ่อมกดลิ้งนี้\n${repairFormUrl}`,
+        text: `แจ้งซ่อมกดลิ้งนี้\n${liffUrl}`,
       };
 
       await this.sendMessage(lineUserId, message, replyToken);
     } catch (error: any) {
       this.logger.error(`Failed to handle repair keyword response: ${error.message}`, error);
       
-      // Fallback response if template fails (e.g., if LIFF URL is considered invalid)
+      // Fallback response
       const fallback: line.Message = {
         type: 'text',
-        text: `กรุณากดลิงก์เพื่อแจ้งซ่อม: https://liff.line.me/${this.liffId}?action=create`
+        text: `กรุณากดลิงก์เพื่อแจ้งซ่อม: https://liff.line.me/${this.liffId}`
       };
       await this.sendMessage(lineUserId, fallback, replyToken);
     }
@@ -359,10 +356,9 @@ export class LineOAWebhookService {
    * Handle "Create Repair" postback - เปิด LIFF form พร้อม lineUserId
    */
   private async handleCreateRepairPostback(lineUserId: string, replyToken?: string) {
-    const frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc-2026.vercel.app';
-    const repairFormUrl = `${frontendUrl}/repairs/liff/form?lineUserId=${lineUserId}`;
+    const liffUrl = `https://liff.line.me/${this.liffId}`;
 
-    this.logger.log(`Opening repair form for user: ${lineUserId}, URL: ${repairFormUrl}`);
+    this.logger.log(`Opening repair form for user: ${lineUserId}, URL: ${liffUrl}`);
 
     const message: line.Message = {
       type: 'template',
@@ -374,7 +370,7 @@ export class LineOAWebhookService {
           {
             type: 'uri',
             label: 'เปิดฟอร์มแจ้งซ่อม',
-            uri: repairFormUrl,
+            uri: liffUrl,
           },
         ],
       },
