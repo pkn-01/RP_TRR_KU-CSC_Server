@@ -621,6 +621,48 @@ export class RepairsService {
           
           this.logger.log(`Notified reporter for status change: ${ticket.ticketCode} -> ${dto.status}`);
         }
+
+        // Notify reporter when messageToReporter is sent (without status change)
+        if (dto.messageToReporter && !(dto.status !== undefined && originalTicket && dto.status !== originalTicket.status)) {
+          // Get ticket with attachments for image
+          const ticketWithAttachments = await this.prisma.repairTicket.findUnique({
+            where: { id: ticket.id },
+            include: { 
+              attachments: { 
+                orderBy: { id: 'asc' },
+                take: 1 
+              } 
+            },
+          });
+
+          if (ticketWithAttachments?.reporterLineUserId) {
+            const imageUrl = ticketWithAttachments.attachments?.[0]?.fileUrl;
+            await this.lineNotificationService.notifyReporterDirectly(
+              ticketWithAttachments.reporterLineUserId,
+              {
+                ticketCode: ticket.ticketCode,
+                status: ticket.status,
+                urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',
+                problemTitle: ticket.problemTitle,
+                description: ticket.problemDescription || ticket.problemTitle,
+                imageUrl,
+                createdAt: ticket.createdAt,
+                remark: dto.messageToReporter,
+              }
+            );
+          } else {
+            const technicianNames = ticket.assignees.map(a => a.user.name);
+            await this.lineNotificationService.notifyRepairTicketStatusUpdate(ticket.userId, {
+              ticketCode: ticket.ticketCode,
+              problemTitle: ticket.problemTitle,
+              status: ticket.status,
+              remark: dto.messageToReporter,
+              technicianNames,
+              updatedAt: new Date(),
+            });
+          }
+          this.logger.log(`Notified reporter for message: ${ticket.ticketCode}`);
+        }
       } catch (notifError) {
         // Don't fail the update if notification fails
         this.logger.error('Failed to send LINE notification:', notifError);
