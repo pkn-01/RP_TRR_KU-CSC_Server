@@ -571,7 +571,7 @@ export class RepairsService {
           
           // Use messageToReporter if available, otherwise fall back to notes
           // SPECIAL CASE: If COMPLETED, use completionReport as the main remark
-          let remarkMessage = dto.messageToReporter || dto.notes;
+          let remarkMessage = dto.messageToReporter || undefined;
           
           if (dto.status === 'COMPLETED' && dto.completionReport) {
             remarkMessage = `รายงานการซ่อม: ${dto.completionReport}`;
