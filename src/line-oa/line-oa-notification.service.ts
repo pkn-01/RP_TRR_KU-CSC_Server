@@ -369,7 +369,7 @@ export class LineOANotificationService {
       header: {
         type: 'box',
         layout: 'vertical',
-        backgroundColor: '#DC2626',
+        backgroundColor: '#FF9800',
         paddingAll: '20px',
         contents: [
           {
