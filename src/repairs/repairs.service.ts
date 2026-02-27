@@ -528,6 +528,7 @@ export class RepairsService {
               rushMessage: dto.notes || undefined,
               adminName: adminUser?.name,
               reporterName: ticket.reporterName,
+              reporterPhone: ticket.reporterPhone || undefined,
               department: ticket.reporterDepartment || undefined,
               location: ticket.location,
               urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',

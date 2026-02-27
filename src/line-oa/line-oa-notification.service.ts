@@ -298,6 +298,7 @@ export class LineOANotificationService {
       rushMessage?: string;
       adminName?: string;
       reporterName: string;
+      reporterPhone?: string;
       department?: string;
       location?: string;
       urgency: 'CRITICAL' | 'URGENT' | 'NORMAL';
@@ -352,6 +353,15 @@ export class LineOANotificationService {
         color: '#2563EB',
       });
     }
+    if (payload.reporterPhone) {
+      actionButtons.push({
+        type: 'button',
+        action: { type: 'uri', label: 'โทรหาผู้แจ้ง', uri: `tel:${payload.reporterPhone}` },
+        style: 'primary',
+        height: 'sm',
+        color: '#16A34A',
+      });
+    }
 
     return {
       type: 'bubble',
@@ -367,7 +377,7 @@ export class LineOANotificationService {
             layout: 'horizontal',
             alignItems: 'center',
             contents: [
-              { type: 'text', text: '⚡ เร่งงานซ่อม', color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1 },
+              { type: 'text', text: 'เร่งงานซ่อม', color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1 },
               {
                 type: 'box',
                 layout: 'vertical',
