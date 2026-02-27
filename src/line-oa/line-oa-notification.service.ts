@@ -423,7 +423,7 @@ export class LineOANotificationService {
             paddingAll: '12px',
             backgroundColor: '#FEF2F2',
             cornerRadius: 'md',
-            borderColor: '#FECACA',
+            borderColor: '#dda148ff',
             borderWidth: '1px',
             contents: [
               { type: 'text', text: `ข้อความจากแอดมิน${payload.adminName ? ` (${payload.adminName})` : ''}`, size: 'xs', color: '#991B1B', weight: 'bold' },
