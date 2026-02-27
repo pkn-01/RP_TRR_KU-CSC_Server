@@ -310,7 +310,7 @@ export class LineOANotificationService {
 
       const flexMessage = {
         type: 'flex' as const,
-        altText: `⚡ เร่งงาน ${payload.ticketCode}`,
+        altText: `เร่งงาน ${payload.ticketCode}`,
         contents: this.createTechnicianRushFlex(payload) as any,
       };
 
@@ -416,7 +416,7 @@ export class LineOANotificationService {
             borderColor: '#FECACA',
             borderWidth: '1px',
             contents: [
-              { type: 'text', text: `📌 ข้อความจากแอดมิน${payload.adminName ? ` (${payload.adminName})` : ''}`, size: 'xs', color: '#991B1B', weight: 'bold' },
+              { type: 'text', text: `ข้อความจากแอดมิน${payload.adminName ? ` (${payload.adminName})` : ''}`, size: 'xs', color: '#991B1B', weight: 'bold' },
               { type: 'text', text: payload.rushMessage, size: 'sm', color: '#7F1D1D', wrap: true, margin: 'xs' },
             ],
           }] : []),
