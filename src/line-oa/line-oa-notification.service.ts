@@ -286,6 +286,196 @@ export class LineOANotificationService {
   }
 
   /* =======================
+     NOTIFY TECHNICIAN (RUSH / REMINDER)
+  ====================== */
+
+  async notifyTechnicianRush(
+    technicianId: number,
+    payload: {
+      ticketCode: string;
+      ticketId?: number;
+      problemTitle: string;
+      rushMessage?: string;
+      adminName?: string;
+      reporterName: string;
+      department?: string;
+      location?: string;
+      urgency: 'CRITICAL' | 'URGENT' | 'NORMAL';
+      imageUrl?: string;
+    }
+  ) {
+    try {
+      const lineLink = await this.getVerifiedLineLink(technicianId);
+      if (!lineLink) return { success: false, reason: 'Technician not linked to LINE' };
+
+      const flexMessage = {
+        type: 'flex' as const,
+        altText: `⚡ เร่งงาน ${payload.ticketCode}`,
+        contents: this.createTechnicianRushFlex(payload) as any,
+      };
+
+      await this.lineOAService.sendMessage(lineLink.lineUserId!, flexMessage);
+      await this.saveNotificationLog(lineLink.lineUserId!, {
+        type: 'REPAIR_TICKET_RUSH',
+        title: 'เร่งงานซ่อม',
+        message: `${payload.ticketCode}: ${payload.problemTitle}`,
+      }, NotificationStatus.SENT);
+
+      return { success: true };
+    } catch (error) {
+      this.logger.error(error.message);
+      return { success: false };
+    }
+  }
+
+  private createTechnicianRushFlex(payload: any) {
+    const urgency = this.getUrgencyConfig(payload.urgency);
+
+    const formattedDate = new Intl.DateTimeFormat('th-TH', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+      timeZone: 'Asia/Bangkok',
+    }).format(new Date());
+
+    let frontendUrl = process.env.FRONTEND_URL || 'https://qa-rp-trr-ku-csc.vercel.app';
+    try {
+      frontendUrl = new URL(frontendUrl).origin;
+    } catch (e) {}
+
+    const actionButtons: any[] = [];
+    if (payload.ticketId) {
+      actionButtons.push({
+        type: 'button',
+        action: { type: 'uri', label: 'จัดการงาน', uri: `${frontendUrl}/login/admin?ticketId=${payload.ticketId}` },
+        style: 'primary',
+        height: 'sm',
+        color: '#2563EB',
+      });
+    }
+
+    return {
+      type: 'bubble',
+      size: 'mega',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        backgroundColor: '#DC2626',
+        paddingAll: '20px',
+        contents: [
+          {
+            type: 'box',
+            layout: 'horizontal',
+            alignItems: 'center',
+            contents: [
+              { type: 'text', text: '⚡ เร่งงานซ่อม', color: '#FFFFFF', weight: 'bold', size: 'lg', flex: 1 },
+              {
+                type: 'box',
+                layout: 'vertical',
+                backgroundColor: urgency.color,
+                cornerRadius: 'xl',
+                paddingAll: '4px',
+                paddingStart: '10px',
+                paddingEnd: '10px',
+                flex: 0,
+                contents: [{ type: 'text', text: urgency.text, color: '#FFFFFF', size: 'xxs', weight: 'bold' }],
+              },
+            ],
+          },
+          { type: 'text', text: payload.ticketCode, color: '#FFFFFFCC', size: 'sm', margin: 'sm', weight: 'bold' },
+        ],
+      },
+      hero: payload.imageUrl ? {
+        type: 'image',
+        url: payload.imageUrl,
+        size: 'full',
+        aspectRatio: '20:13',
+        aspectMode: 'cover',
+      } : undefined,
+      body: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '20px',
+        backgroundColor: '#FFFFFF',
+        contents: [
+          {
+            type: 'box',
+            layout: 'vertical',
+            spacing: 'xs',
+            contents: [
+              { type: 'text', text: 'ปัญหาที่แจ้ง', size: 'xs', color: '#64748B', weight: 'bold' },
+              { type: 'text', text: payload.problemTitle, size: 'md', weight: 'bold', color: '#1E293B', wrap: true },
+            ],
+          },
+          ...(payload.rushMessage ? [{
+            type: 'box',
+            layout: 'vertical',
+            margin: 'md',
+            paddingAll: '12px',
+            backgroundColor: '#FEF2F2',
+            cornerRadius: 'md',
+            borderColor: '#FECACA',
+            borderWidth: '1px',
+            contents: [
+              { type: 'text', text: `📌 ข้อความจากแอดมิน${payload.adminName ? ` (${payload.adminName})` : ''}`, size: 'xs', color: '#991B1B', weight: 'bold' },
+              { type: 'text', text: payload.rushMessage, size: 'sm', color: '#7F1D1D', wrap: true, margin: 'xs' },
+            ],
+          }] : []),
+          { type: 'separator', margin: 'xl', color: '#F1F5F9' },
+          {
+            type: 'box',
+            layout: 'vertical',
+            margin: 'xl',
+            spacing: 'sm',
+            contents: [
+              {
+                type: 'box', layout: 'horizontal', contents: [
+                  { type: 'text', text: 'ผู้แจ้ง', size: 'sm', color: '#64748B', flex: 3 },
+                  { type: 'text', text: payload.reporterName, size: 'sm', color: '#1E293B', weight: 'bold', flex: 7, wrap: true },
+                ],
+              },
+              ...(payload.department ? [{
+                type: 'box', layout: 'horizontal', contents: [
+                  { type: 'text', text: 'แผนก', size: 'sm', color: '#64748B', flex: 3 },
+                  { type: 'text', text: payload.department, size: 'sm', color: '#1E293B', flex: 7, wrap: true },
+                ],
+              }] : []),
+              ...(payload.location ? [{
+                type: 'box', layout: 'horizontal', contents: [
+                  { type: 'text', text: 'สถานที่', size: 'sm', color: '#64748B', flex: 3 },
+                  { type: 'text', text: payload.location, size: 'sm', color: '#1E293B', flex: 7, wrap: true },
+                ],
+              }] : []),
+            ],
+          },
+        ],
+      },
+      footer: {
+        type: 'box',
+        layout: 'vertical',
+        paddingAll: '20px',
+        backgroundColor: '#F8FAFC',
+        spacing: 'md',
+        contents: [
+          ...(actionButtons.length > 0 ? [{
+            type: 'box',
+            layout: 'horizontal',
+            spacing: 'sm',
+            contents: actionButtons,
+          }] : []),
+          {
+            type: 'box',
+            layout: 'horizontal',
+            contents: [
+              { type: 'text', text: formattedDate, size: 'xxs', color: '#94A3B8' },
+              { type: 'text', text: 'ระบบแจ้งซ่อม', size: 'xxs', color: '#CBD5E1', align: 'end', weight: 'bold' },
+            ],
+          },
+        ],
+      },
+    };
+  }
+
+  /* =======================
      STATUS UPDATE → REPORTER
   ======================= */
 

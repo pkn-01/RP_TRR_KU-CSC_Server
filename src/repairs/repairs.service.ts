@@ -505,6 +505,54 @@ export class RepairsService {
           }
         }
 
+        // Rush notification to tagged assignees
+        if (dto.rushAssigneeIds && dto.rushAssigneeIds.length > 0) {
+          // Get admin name
+          const adminUser = await this.prisma.user.findUnique({
+            where: { id: updatedById },
+            select: { name: true },
+          });
+
+          // Get first attachment image
+          const ticketForRush = await this.prisma.repairTicket.findUnique({
+            where: { id: ticket.id },
+            include: { attachments: { orderBy: { id: 'asc' }, take: 1 } },
+          });
+          const rushImageUrl = ticketForRush?.attachments?.[0]?.fileUrl;
+
+          for (const techId of dto.rushAssigneeIds) {
+            await this.lineNotificationService.notifyTechnicianRush(techId, {
+              ticketCode: ticket.ticketCode,
+              ticketId: ticket.id,
+              problemTitle: ticket.problemTitle,
+              rushMessage: dto.notes || undefined,
+              adminName: adminUser?.name,
+              reporterName: ticket.reporterName,
+              department: ticket.reporterDepartment || undefined,
+              location: ticket.location,
+              urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',
+              imageUrl: rushImageUrl,
+            });
+            this.logger.log(`Sent rush notification to technician ${techId} for: ${ticket.ticketCode}`);
+          }
+
+          // Log rush action in history
+          const rushUserNames = await this.prisma.user.findMany({
+            where: { id: { in: dto.rushAssigneeIds } },
+            select: { id: true, name: true },
+          });
+          const rushNames = rushUserNames.map(u => u.name).join(', ');
+          await this.prisma.repairAssignmentHistory.create({
+            data: {
+              repairTicketId: id,
+              action: 'RUSH',
+              assignerId: updatedById,
+              assigneeId: dto.rushAssigneeIds[0],
+              note: `เร่งงาน: ${rushNames}${dto.notes ? ` - ${dto.notes}` : ''}`,
+            },
+          });
+        }
+
         // Notify technicians when job is COMPLETED
         if (dto.status === 'COMPLETED' && originalTicket && originalTicket.status !== 'COMPLETED') {
            const assignees = await this.prisma.repairTicketAssignee.findMany({

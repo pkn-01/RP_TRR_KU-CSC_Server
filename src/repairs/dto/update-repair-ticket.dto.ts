@@ -29,6 +29,11 @@ export class UpdateRepairTicketDto extends PartialType(CreateRepairTicketDto) {
   assigneeIds?: number[];
 
   @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  rushAssigneeIds?: number[];
+
+  @IsOptional()
   completedAt?: Date;
 
   @IsOptional()
