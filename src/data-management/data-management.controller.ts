@@ -6,7 +6,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Role } from '@prisma/client';
 
-@Controller('data-management')
+@Controller('api/data-management')
 @UseGuards(RolesGuard)
 @Roles(Role.ADMIN)
 export class DataManagementController {

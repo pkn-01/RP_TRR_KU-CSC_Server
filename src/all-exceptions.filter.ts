@@ -26,21 +26,21 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
+    // SECURITY: Only expose HttpException messages to clients, hide internal errors
+    const isHttpException = exception instanceof HttpException;
     const responseBody = {
       statusCode: httpStatus,
       timestamp: new Date().toISOString(),
       path: httpAdapter.getRequestUrl(ctx.getRequest()),
-      message: (exception as any).message || 'Internal server error',
-      error: (exception as any).name || 'UnknownError',
+      message: isHttpException
+        ? (exception as any).message || 'Request failed'
+        : 'Internal server error', // Don't leak internal error details
     };
 
     this.logger.error(
       `Exception thrown at ${responseBody.path}: ${JSON.stringify(responseBody)}`,
       (exception as any).stack,
     );
-    
-    // Also console.error for immediate visibility in terminal
-    console.error('CRITICAL BACKEND ERROR:', exception);
 
     httpAdapter.reply(ctx.getResponse(), responseBody, httpStatus);
   }

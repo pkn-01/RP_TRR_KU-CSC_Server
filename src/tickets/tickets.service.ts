@@ -1,12 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { Priority } from '@prisma/client';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import * as path from 'path';
 
+// SECURITY: Allowed file types and size limits
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 @Injectable()
 export class TicketsService {
+  private readonly logger = new Logger(TicketsService.name);
+
   constructor(
     private prisma: PrismaService,
     private cloudinaryService: CloudinaryService,
@@ -80,26 +86,39 @@ export class TicketsService {
       },
     });
 
-    // Handle file uploads to Cloudinary
+    // Handle file uploads to Cloudinary with SECURITY validation
     if (files && files.length > 0) {
       const attachments: any[] = [];
       for (const file of files) {
         try {
+          // SECURITY: Validate MIME type
+          if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+            this.logger.warn(`Rejected file with invalid MIME type: ${file.mimetype}`);
+            continue;
+          }
+          // SECURITY: Validate file size
+          if (file.size > MAX_FILE_SIZE) {
+            this.logger.warn(`Rejected file exceeding size limit: ${file.size} bytes`);
+            continue;
+          }
+          // SECURITY: Sanitize filename
+          const sanitizedName = path.basename(file.originalname).replace(/[^a-zA-Z0-9.-]/g, '_');
+
           const result = await this.cloudinaryService.uploadFile(
             file.buffer,
-            file.originalname,
+            sanitizedName,
             'tickets', // Cloudinary folder
           );
 
           attachments.push({
             ticketId: ticket.id,
-            filename: file.originalname,
+            filename: sanitizedName,
             fileUrl: result.url,
             fileSize: file.size,
             mimeType: file.mimetype,
           });
         } catch (error) {
-          console.error(`Failed to upload file ${file.originalname}:`, error);
+          this.logger.error(`Failed to upload file ${file.originalname}:`, error);
           // Continue with other files even if one fails
         }
       }
@@ -114,31 +133,49 @@ export class TicketsService {
     return ticket;
   }
 
-  async findAll(userId?: number) {
-    return this.prisma.ticket.findMany({
-      where: userId ? { userId } : undefined,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
+  async findAll(userId?: number, page: number = 1, limit: number = 50) {
+    const skip = (page - 1) * limit;
+    const where = userId ? { userId } : undefined;
+
+    const [data, total] = await Promise.all([
+      this.prisma.ticket.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
           },
-        },
-        assignee: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
+          assignee: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
           },
+          attachments: true,
+          logs: true,
         },
-        attachments: true,
-        logs: true,
+        skip,
+        take: limit,
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      this.prisma.ticket.count({ where }),
+    ]);
+
+    return {
+      data,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    };
   }
 
   async findOne(id: number) {

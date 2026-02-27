@@ -276,10 +276,13 @@ export class RepairsService {
   }
 
   async update(id: number, dto: any, updatedById: number, files?: Express.Multer.File[]) {
-    // Get original ticket to compare for notifications
+    // Get original ticket with attachments to compare for notifications (single query)
     const originalTicket = await this.prisma.repairTicket.findUnique({
       where: { id },
-      include: { assignees: { select: { userId: true } } },
+      include: {
+        assignees: { select: { userId: true } },
+        attachments: { orderBy: { id: 'asc' }, take: 1 }, // PERF: Fetch attachment once for all notifications
+      },
     });
 
     // Validate status transition
@@ -481,68 +484,60 @@ export class RepairsService {
       });
 
       // LINE Notifications
+      // PERF: Reuse the pre-fetched attachment image URL for all notifications
+      const cachedImageUrl = originalTicket?.attachments?.[0]?.fileUrl;
+
       try {
-        // Notify new assignees
+        // Notify new assignees (PERF: parallelized)
         if (dto.assigneeIds !== undefined) {
           const newAssigneeIds = dto.assigneeIds.filter((id: number) => !previousAssigneeIds.includes(id));
           
-          for (const techId of newAssigneeIds) {
-            // Get first attachment image for the notification
-            const ticketWithAttachments = await this.prisma.repairTicket.findUnique({
-              where: { id: ticket.id },
-              include: { attachments: { orderBy: { id: 'asc' }, take: 1 } },
-            });
-            const imageUrl = ticketWithAttachments?.attachments?.[0]?.fileUrl;
-
-            await this.lineNotificationService.notifyTechnicianTaskAssignment(techId, {
-              ticketCode: ticket.ticketCode,
-              ticketId: ticket.id,
-              problemTitle: ticket.problemTitle,
-              problemDescription: ticket.problemDescription || undefined,
-              adminNote: dto.notes || undefined,
-              reporterName: ticket.reporterName,
-              reporterPhone: ticket.reporterPhone || undefined,
-              department: ticket.reporterDepartment || 'ไม่ระบุแผนก',
-              location: ticket.location,
-              urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',
-              action: 'ASSIGNED',
-              imageUrl,
-            });
-            this.logger.log(`Notified technician ${techId} for assignment: ${ticket.ticketCode}`);
+          if (newAssigneeIds.length > 0) {
+            await Promise.allSettled(
+              newAssigneeIds.map((techId: number) =>
+                this.lineNotificationService.notifyTechnicianTaskAssignment(techId, {
+                  ticketCode: ticket.ticketCode,
+                  ticketId: ticket.id,
+                  problemTitle: ticket.problemTitle,
+                  problemDescription: ticket.problemDescription || undefined,
+                  adminNote: dto.notes || undefined,
+                  reporterName: ticket.reporterName,
+                  reporterPhone: ticket.reporterPhone || undefined,
+                  department: ticket.reporterDepartment || 'ไม่ระบุแผนก',
+                  location: ticket.location,
+                  urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',
+                  action: 'ASSIGNED',
+                  imageUrl: cachedImageUrl,
+                }).then(() => this.logger.log(`Notified technician ${techId} for assignment: ${ticket.ticketCode}`))
+              )
+            );
           }
         }
 
-        // Rush notification to tagged assignees
+        // Rush notification to tagged assignees (PERF: parallelized)
         if (dto.rushAssigneeIds && dto.rushAssigneeIds.length > 0) {
-          // Get admin name
           const adminUser = await this.prisma.user.findUnique({
             where: { id: updatedById },
             select: { name: true },
           });
 
-          // Get first attachment image
-          const ticketForRush = await this.prisma.repairTicket.findUnique({
-            where: { id: ticket.id },
-            include: { attachments: { orderBy: { id: 'asc' }, take: 1 } },
-          });
-          const rushImageUrl = ticketForRush?.attachments?.[0]?.fileUrl;
-
-          for (const techId of dto.rushAssigneeIds) {
-            await this.lineNotificationService.notifyTechnicianRush(techId, {
-              ticketCode: ticket.ticketCode,
-              ticketId: ticket.id,
-              problemTitle: ticket.problemTitle,
-              rushMessage: dto.notes || undefined,
-              adminName: adminUser?.name,
-              reporterName: ticket.reporterName,
-              reporterPhone: ticket.reporterPhone || undefined,
-              department: ticket.reporterDepartment || undefined,
-              location: ticket.location,
-              urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',
-              imageUrl: rushImageUrl,
-            });
-            this.logger.log(`Sent rush notification to technician ${techId} for: ${ticket.ticketCode}`);
-          }
+          await Promise.allSettled(
+            dto.rushAssigneeIds.map((techId: number) =>
+              this.lineNotificationService.notifyTechnicianRush(techId, {
+                ticketCode: ticket.ticketCode,
+                ticketId: ticket.id,
+                problemTitle: ticket.problemTitle,
+                rushMessage: dto.notes || undefined,
+                adminName: adminUser?.name,
+                reporterName: ticket.reporterName,
+                reporterPhone: ticket.reporterPhone || undefined,
+                department: ticket.reporterDepartment || undefined,
+                location: ticket.location,
+                urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',
+                imageUrl: cachedImageUrl,
+              }).then(() => this.logger.log(`Sent rush notification to technician ${techId} for: ${ticket.ticketCode}`))
+            )
+          );
 
           // Log rush action in history
           const rushUserNames = await this.prisma.user.findMany({
@@ -561,109 +556,80 @@ export class RepairsService {
           });
         }
 
-        // Notify technicians when job is COMPLETED
+        // Notify technicians when job is COMPLETED (PERF: parallelized)
         if (dto.status === 'COMPLETED' && originalTicket && originalTicket.status !== 'COMPLETED') {
            const assignees = await this.prisma.repairTicketAssignee.findMany({
              where: { repairTicketId: id },
              include: { user: true }
            });
 
-           // Get first attachment image for the completion notification
-           const ticketForImage = await this.prisma.repairTicket.findUnique({
-             where: { id },
-             include: { attachments: { orderBy: { id: 'asc' }, take: 1 } },
-           });
-           const problemImageUrl = ticketForImage?.attachments?.[0]?.fileUrl;
-
-           for (const assignee of assignees) {
-              await this.lineNotificationService.notifyTechnicianJobCompletion(assignee.userId, {
-                ticketCode: ticket.ticketCode,
-                ticketId: ticket.id,
-                problemTitle: ticket.problemTitle,
-                reporterName: ticket.reporterName,
-                department: ticket.reporterDepartment || undefined,
-                location: ticket.location,
-                completedAt: ticket.completedAt || new Date(),
-                completionNote: dto.completionReport || dto.notes,
-                problemImageUrl,
-              });
-              this.logger.log(`Notified technician ${assignee.userId} for completion: ${ticket.ticketCode}`);
-           }
+           await Promise.allSettled(
+             assignees.map(assignee =>
+               this.lineNotificationService.notifyTechnicianJobCompletion(assignee.userId, {
+                 ticketCode: ticket.ticketCode,
+                 ticketId: ticket.id,
+                 problemTitle: ticket.problemTitle,
+                 reporterName: ticket.reporterName,
+                 department: ticket.reporterDepartment || undefined,
+                 location: ticket.location,
+                 completedAt: ticket.completedAt || new Date(),
+                 completionNote: dto.completionReport || dto.notes,
+                 problemImageUrl: cachedImageUrl,
+               }).then(() => this.logger.log(`Notified technician ${assignee.userId} for completion: ${ticket.ticketCode}`))
+             )
+           );
         }
 
-        // Notify technicians when job is CANCELLED (if it had assignees)
+        // Notify technicians when job is CANCELLED (PERF: parallelized)
         if (dto.status === 'CANCELLED' && originalTicket && originalTicket.status !== 'CANCELLED') {
            const assignees = await this.prisma.repairTicketAssignee.findMany({
              where: { repairTicketId: id },
              include: { user: true }
            });
 
-           // Get first attachment image for the cancellation notification
-           const ticketForCancelImage = await this.prisma.repairTicket.findUnique({
-             where: { id },
-             include: { attachments: { orderBy: { id: 'asc' }, take: 1 } },
-           });
-           const cancelProblemImageUrl = ticketForCancelImage?.attachments?.[0]?.fileUrl;
-
-           for (const assignee of assignees) {
-              await this.lineNotificationService.notifyTechnicianJobCancellation(assignee.userId, {
-                ticketCode: ticket.ticketCode,
-                ticketId: ticket.id,
-                problemTitle: ticket.problemTitle,
-                reporterName: ticket.reporterName,
-                department: ticket.reporterDepartment || undefined,
-                location: ticket.location,
-                cancelledAt: new Date(),
-                cancelNote: dto.notes,
-                problemImageUrl: cancelProblemImageUrl,
-              });
-              this.logger.log(`Notified technician ${assignee.userId} for cancellation: ${ticket.ticketCode}`);
-           }
+           await Promise.allSettled(
+             assignees.map(assignee =>
+               this.lineNotificationService.notifyTechnicianJobCancellation(assignee.userId, {
+                 ticketCode: ticket.ticketCode,
+                 ticketId: ticket.id,
+                 problemTitle: ticket.problemTitle,
+                 reporterName: ticket.reporterName,
+                 department: ticket.reporterDepartment || undefined,
+                 location: ticket.location,
+                 cancelledAt: new Date(),
+                 cancelNote: dto.notes,
+                 problemImageUrl: cachedImageUrl,
+               }).then(() => this.logger.log(`Notified technician ${assignee.userId} for cancellation: ${ticket.ticketCode}`))
+             )
+           );
         }
 
-        // Notify reporter on status change (exclusively, ignore assignee changes)
+        // Notify reporter on status change
         if (dto.status !== undefined && originalTicket && dto.status !== originalTicket.status) {
           const technicianNames = ticket.assignees.map(a => a.user.name);
-          
-          // Use messageToReporter if available, otherwise fall back to notes
-          // SPECIAL CASE: If COMPLETED, use completionReport as the main remark
           let remarkMessage = dto.messageToReporter || undefined;
           
           if (dto.status === 'COMPLETED' && dto.completionReport) {
             remarkMessage = `รายงานการซ่อม: ${dto.completionReport}`;
           }
 
-          // Get ticket with attachments for image
-          const ticketWithAttachments = await this.prisma.repairTicket.findUnique({
-            where: { id: ticket.id },
-            include: { 
-              attachments: { 
-                orderBy: { id: 'asc' },
-                take: 1 
-              } 
-            },
-          });
-          
-          // Consolidated Notification Logic: Send only ONE notification to reporter
-          if (ticketWithAttachments?.reporterLineUserId) {
-            // Priority 1: Direct notification via reporterLineUserId (Special Flex template)
-            const imageUrl = ticketWithAttachments.attachments?.[0]?.fileUrl;
+          // Consolidated: Send only ONE notification to reporter
+          if (originalTicket.reporterLineUserId) {
             await this.lineNotificationService.notifyReporterDirectly(
-              ticketWithAttachments.reporterLineUserId,
+              originalTicket.reporterLineUserId,
               {
                 ticketCode: ticket.ticketCode,
                 status: dto.status,
                 urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',
                 problemTitle: ticket.problemTitle,
                 description: ticket.problemDescription || ticket.problemTitle,
-                imageUrl,
+                imageUrl: cachedImageUrl,
                 createdAt: ticket.createdAt,
                 remark: remarkMessage,
               }
             );
             this.logger.log(`Notified reporter directly for: ${ticket.ticketCode}`);
           } else {
-            // Priority 2: Standard notification via user ID (Fallback if no direct ID)
             await this.lineNotificationService.notifyRepairTicketStatusUpdate(ticket.userId, {
               ticketCode: ticket.ticketCode,
               problemTitle: ticket.problemTitle,
@@ -674,34 +640,20 @@ export class RepairsService {
             });
             this.logger.log(`Notified reporter via userId for: ${ticket.ticketCode}`);
           }
-          
-          this.logger.log(`Notified reporter for status change: ${ticket.ticketCode} -> ${dto.status}`);
         }
 
         // Notify reporter when messageToReporter is sent (without status change)
         if (dto.messageToReporter && !(dto.status !== undefined && originalTicket && dto.status !== originalTicket.status)) {
-          // Get ticket with attachments for image
-          const ticketWithAttachments = await this.prisma.repairTicket.findUnique({
-            where: { id: ticket.id },
-            include: { 
-              attachments: { 
-                orderBy: { id: 'asc' },
-                take: 1 
-              } 
-            },
-          });
-
-          if (ticketWithAttachments?.reporterLineUserId) {
-            const imageUrl = ticketWithAttachments.attachments?.[0]?.fileUrl;
+          if (originalTicket?.reporterLineUserId) {
             await this.lineNotificationService.notifyReporterDirectly(
-              ticketWithAttachments.reporterLineUserId,
+              originalTicket.reporterLineUserId,
               {
                 ticketCode: ticket.ticketCode,
                 status: ticket.status,
                 urgency: ticket.urgency as 'CRITICAL' | 'URGENT' | 'NORMAL',
                 problemTitle: ticket.problemTitle,
                 description: ticket.problemDescription || ticket.problemTitle,
-                imageUrl,
+                imageUrl: cachedImageUrl,
                 createdAt: ticket.createdAt,
                 remark: dto.messageToReporter,
               }

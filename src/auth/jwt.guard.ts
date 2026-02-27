@@ -40,11 +40,8 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       return true;
     }
     
-    // Check if URL path contains 'liff' which should be public
-    if (url.includes('/liff/')) {
-      this.logger.debug(`✅ LIFF endpoint detected, skipping JWT validation`);
-      return true;
-    }
+    // SECURITY: Removed URL-based '/liff/' bypass — was exploitable via path injection
+    // LIFF endpoints use @SetMetadata('isPublic', true) decorator instead
 
     this.logger.debug('Validating JWT token...');
     const result = super.canActivate(context);

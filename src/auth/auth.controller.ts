@@ -1,4 +1,5 @@
 import { Controller, Post, Body, Get, Patch, Request, BadRequestException, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
@@ -11,6 +12,7 @@ export class AuthController {
 
   @Post('register')
   @Public()
+  @Throttle({ default: { limit: 3, ttl: 60000 } }) // SECURITY: Stricter rate limit for public registration
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
@@ -32,17 +34,7 @@ export class AuthController {
     }
   }
 
-  // 🔴 DEBUG: Check what redirect_uri is actually being used on Vercel
-  @Get('debug-redirect-uri')
-  @Public()
-  debugRedirectUri() {
-    const redirectUri = process.env.LINE_REDIRECT_URI;
-    return {
-      LINE_REDIRECT_URI: redirectUri,
-      hasTrailingSlash: redirectUri?.endsWith('/'),
-      message: 'This should match LINE Console Callback URL exactly',
-    };
-  }
+  // SECURITY: debug-redirect-uri endpoint removed — was leaking env vars in production
 
   @Post('line-callback')
   @Public()

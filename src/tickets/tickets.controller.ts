@@ -12,12 +12,16 @@ import {
   NotFoundException,
   BadRequestException,
   InternalServerErrorException,
+  ForbiddenException,
+  ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { TicketsService } from './tickets.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { Public } from '../auth/public.decorator';
+import { JwtAuthGuard } from '../auth/jwt.guard';
 
 @Controller('api/tickets')
 export class TicketsController {
@@ -47,72 +51,98 @@ export class TicketsController {
     return this.ticketsService.findAll(isAdmin ? undefined : req.user.id);
   }
 
+  // SECURITY: Removed @Public() — requires JWT authentication + ownership/role check
   @Get(':id')
-  @Public()
-  async findOne(@Param('id') id: string) {
-    console.log(`[DEBUG] Fetching ticket with ID: ${id}`);
+  @UseGuards(JwtAuthGuard)
+  async findOne(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
     try {
-      const ticket = await this.ticketsService.findOne(+id);
-      console.log(`[DEBUG] Ticket found:`, ticket ? 'Yes' : 'No');
+      const ticket = await this.ticketsService.findOne(id);
       if (!ticket) {
         throw new NotFoundException(`Ticket with ID ${id} not found`);
       }
-      console.log(`[DEBUG] Ticket ID:`, ticket.id, `Title:`, ticket.title);
+      // SECURITY: Only owner, assignee, or ADMIN/IT can view
+      const isAdmin = ['ADMIN', 'IT'].includes(req.user?.role);
+      const isOwner = ticket.userId === req.user?.id;
+      const isAssignee = ticket.assignedTo === req.user?.id;
+      if (!isAdmin && !isOwner && !isAssignee) {
+        throw new ForbiddenException('Permission denied');
+      }
       return ticket;
     } catch (error: any) {
-      console.error(`[ERROR] Error fetching ticket ${id}:`, error.message);
-      if (error instanceof NotFoundException) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error;
       }
       throw new InternalServerErrorException(`Failed to fetch ticket: ${error.message}`);
     }
   }
 
+  // SECURITY: Removed @Public() — requires JWT authentication
   @Get('code/:code')
-  @Public()
-  async findByCode(@Param('code') code: string) {
-    console.log(`[DEBUG] Fetching ticket with code: ${code}`);
+  @UseGuards(JwtAuthGuard)
+  async findByCode(@Param('code') code: string, @Request() req: any) {
     try {
       const ticket = await this.ticketsService.findByCode(code);
-      console.log(`[DEBUG] Ticket found:`, ticket ? 'Yes' : 'No');
       if (!ticket) {
         throw new NotFoundException(`Ticket with code ${code} not found`);
       }
-      console.log(`[DEBUG] Ticket code:`, ticket.ticketCode, `Title:`, ticket.title);
+      // SECURITY: Only owner, assignee, or ADMIN/IT can view
+      const isAdmin = ['ADMIN', 'IT'].includes(req.user?.role);
+      const isOwner = ticket.userId === req.user?.id;
+      const isAssignee = ticket.assignedTo === req.user?.id;
+      if (!isAdmin && !isOwner && !isAssignee) {
+        throw new ForbiddenException('Permission denied');
+      }
       return ticket;
     } catch (error: any) {
-      console.error(`[ERROR] Error fetching ticket with code ${code}:`, error.message);
-      if (error instanceof NotFoundException) {
+      if (error instanceof NotFoundException || error instanceof ForbiddenException) {
         throw error;
       }
       throw new InternalServerErrorException(`Failed to fetch ticket: ${error.message}`);
     }
   }
 
+  // SECURITY: Removed @Public() — requires JWT + ADMIN/IT role to search by email
   @Get('search/by-email/:email')
-  @Public()
-  async findByEmail(@Param('email') email: string) {
-    console.log(`[DEBUG] Searching tickets with email: ${email}`);
+  @UseGuards(JwtAuthGuard)
+  async findByEmail(@Param('email') email: string, @Request() req: any) {
+    // SECURITY: Only ADMIN/IT can search by email (PII protection)
+    if (!['ADMIN', 'IT'].includes(req.user?.role)) {
+      throw new ForbiddenException('Only ADMIN or IT can search by email');
+    }
     try {
       const tickets = await this.ticketsService.findByEmail(email);
-      console.log(`[DEBUG] Tickets found:`, tickets.length);
       return tickets;
     } catch (error: any) {
-      console.error(`[ERROR] Error searching tickets with email ${email}:`, error.message);
       throw new InternalServerErrorException(`Failed to search tickets: ${error.message}`);
     }
   }
 
   @Put(':id')
-  update(
-    @Param('id') id: string,
+  @UseGuards(JwtAuthGuard)
+  async update(
+    @Param('id', ParseIntPipe) id: number,
     @Body() updateTicketDto: UpdateTicketDto,
+    @Request() req: any,
   ) {
-    return this.ticketsService.update(+id, updateTicketDto);
+    // SECURITY: Only owner, assignee, or ADMIN/IT can update
+    const ticket = await this.ticketsService.findOne(id);
+    if (!ticket) throw new NotFoundException(`Ticket ${id} not found`);
+    const isAdmin = ['ADMIN', 'IT'].includes(req.user?.role);
+    const isOwner = ticket.userId === req.user?.id;
+    const isAssignee = ticket.assignedTo === req.user?.id;
+    if (!isAdmin && !isOwner && !isAssignee) {
+      throw new ForbiddenException('Permission denied');
+    }
+    return this.ticketsService.update(id, updateTicketDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.ticketsService.remove(+id);
+  @UseGuards(JwtAuthGuard)
+  async remove(@Param('id', ParseIntPipe) id: number, @Request() req: any) {
+    // SECURITY: Only ADMIN or IT can delete tickets
+    if (req.user?.role !== 'ADMIN' && req.user?.role !== 'IT') {
+      throw new ForbiddenException('Only ADMIN or IT can delete tickets');
+    }
+    return this.ticketsService.remove(id);
   }
 }

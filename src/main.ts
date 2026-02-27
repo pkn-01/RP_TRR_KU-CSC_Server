@@ -71,7 +71,7 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      skipMissingProperties: true,
+      // SECURITY: Removed skipMissingProperties — required DTO fields are now enforced
     }),
   );
 
