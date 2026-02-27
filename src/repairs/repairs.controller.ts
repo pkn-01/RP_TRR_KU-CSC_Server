@@ -222,19 +222,9 @@ export class RepairsController {
     }
   }
 
-  @SetMetadata('isPublic', true)
-  @Get('liff/ticket-by-id/:id')
-  async getTicketByIdPublic(@Param('id', ParseIntPipe) id: number) {
-    try {
-      const ticket = await this.repairsService.findOne(id);
-      return ticket;
-    } catch (error) {
-      throw new HttpException(
-        'Ticket not found',
-        HttpStatus.NOT_FOUND,
-      );
-    }
-  }
+  // SECURITY: Removed public liff/ticket-by-id/:id endpoint
+  // It exposed ticket data without authentication via sequential IDs (IDOR vulnerability)
+  // Use liff/ticket-public/:code instead (requires ticket code, not guessable)
 
   /* =====================================================
       Protected APIs

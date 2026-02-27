@@ -262,6 +262,13 @@ export class RepairsService {
         assignees: { include: { user: { select: this.safeUserSelect } } },
         attachments: true,
         logs: { include: { user: { select: this.safeUserSelect } }, orderBy: { createdAt: 'desc' } },
+        assignmentHistory: {
+          include: { 
+            assigner: { select: this.safeUserSelect },
+            assignee: { select: this.safeUserSelect }
+          },
+          orderBy: { createdAt: 'desc' }
+        }
       },
     });
     if (!ticket) throw new NotFoundException(`Ticket ${ticketCode} not found`);
