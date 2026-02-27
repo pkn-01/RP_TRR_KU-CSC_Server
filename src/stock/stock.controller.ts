@@ -1,8 +1,11 @@
-import { Controller, Get, Post, Body, Param, Delete, Put, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, Put, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { StockService } from './stock.service';
-import { StockItem } from '@prisma/client';
+import { StockItem, Role } from '@prisma/client';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 
 @Controller('api/stock')
+@UseGuards(RolesGuard)
 export class StockController {
   constructor(private readonly stockService: StockService) {}
 
@@ -17,6 +20,7 @@ export class StockController {
   }
 
   @Post()
+  @Roles(Role.ADMIN, Role.IT)
   async create(@Body() data: any) {
     // Basic validation could be improved with DTOs
     return this.stockService.create({
@@ -29,6 +33,7 @@ export class StockController {
   }
 
   @Delete(':id')
+  @Roles(Role.ADMIN, Role.IT)
   async remove(@Param('id', ParseIntPipe) id: number) {
     return this.stockService.remove(id);
   }
