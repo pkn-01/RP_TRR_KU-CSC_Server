@@ -257,13 +257,13 @@ export class DataManagementService {
     loans.forEach(loan => {
       sheet.addRow({
         id: loan.id,
-        itemName: loan.itemName,
+        itemName: loan.itemName || '-',
         quantity: loan.quantity,
         borrower: loan.borrowerName || loan.borrowedBy.name,
         department: loan.borrowerDepartment || '-',
         phone: loan.borrowerPhone || '-',
         borrowDate: loan.borrowDate.toISOString().split('T')[0],
-        expectedReturn: loan.expectedReturnDate.toISOString().split('T')[0],
+        expectedReturn: loan.expectedReturnDate?.toISOString().split('T')[0] || '-',
         returnDate: loan.returnDate?.toISOString().split('T')[0] || '-',
         status: loan.status,
       });

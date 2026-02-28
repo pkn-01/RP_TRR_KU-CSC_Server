@@ -6,10 +6,10 @@ export class LoansService {
   constructor(private prisma: PrismaService) {}
 
   async create(data: {
-    itemName: string;
+    itemName?: string;
     description?: string;
     quantity: number;
-    expectedReturnDate: string;
+    expectedReturnDate?: string;
     userId: number;
     borrowerName?: string;
     borrowerDepartment?: string;
@@ -18,11 +18,11 @@ export class LoansService {
   }) {
     return await this.prisma.loan.create({
       data: {
-        itemName: data.itemName,
+        itemName: data.itemName || '',
         description: data.description || '',
         quantity: data.quantity,
         borrowDate: new Date(),
-        expectedReturnDate: new Date(data.expectedReturnDate),
+        expectedReturnDate: data.expectedReturnDate ? new Date(data.expectedReturnDate) : null,
         status: 'BORROWED',
         userId: data.userId,
         borrowerName: data.borrowerName || '',

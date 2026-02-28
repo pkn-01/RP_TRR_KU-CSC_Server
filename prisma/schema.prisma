@@ -111,11 +111,11 @@ model Notification {
 
 model Loan {
   id                 Int        @id @default(autoincrement())
-  itemName           String
+  itemName           String?
   description        String?
   quantity           Int        @default(1)
   borrowDate         DateTime   @default(now())
-  expectedReturnDate DateTime
+  expectedReturnDate DateTime?
   returnDate         DateTime?
   status             LoanStatus @default(BORROWED)
   borrowerName       String?
