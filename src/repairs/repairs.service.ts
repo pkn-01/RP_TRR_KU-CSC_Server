@@ -743,7 +743,7 @@ export class RepairsService {
     };
   }
 
-  async getDashboardStatistics(filter: 'day' | 'week' | 'month' = 'day', date?: Date) {
+  async getDashboardStatistics(filter: 'day' | 'week' | 'month' = 'day', date?: Date, limit?: number) {
     const targetDate = date || new Date();
     
     // Calculate date range based on filter
@@ -756,9 +756,8 @@ export class RepairsService {
       endDate = new Date(targetDate);
       endDate.setHours(23, 59, 59, 999);
     } else if (filter === 'week') {
-      const dayOfWeek = targetDate.getDay();
+      // User wanting custom start date for week (start on selected date)
       startDate = new Date(targetDate);
-      startDate.setDate(targetDate.getDate() - dayOfWeek);
       startDate.setHours(0, 0, 0, 0);
       endDate = new Date(startDate);
       endDate.setDate(startDate.getDate() + 6);
@@ -810,7 +809,7 @@ export class RepairsService {
         status: true,
       },
       orderBy: { createdAt: 'desc' },
-      take: 20,
+      take: limit || 20,
     });
 
     return {

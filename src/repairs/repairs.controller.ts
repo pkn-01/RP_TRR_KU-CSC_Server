@@ -279,9 +279,11 @@ export class RepairsController {
   async getDashboardStatistics(
     @Query('filter') filter: 'day' | 'week' | 'month' = 'day',
     @Query('date') dateStr?: string,
+    @Query('limit') limitStr?: string,
   ) {
     const date = dateStr ? new Date(dateStr) : new Date();
-    return this.repairsService.getDashboardStatistics(filter, date);
+    const limit = limitStr ? parseInt(limitStr, 10) : undefined;
+    return this.repairsService.getDashboardStatistics(filter, date, limit);
   }
 
   @Get('statistics/by-department')
