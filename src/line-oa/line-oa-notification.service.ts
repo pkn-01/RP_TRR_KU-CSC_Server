@@ -1055,10 +1055,10 @@ export class LineOANotificationService {
     } catch (e) {}
     
     const actionButtons: any[] = [];
-    if (payload.ticketId) {
+    if (payload.ticketCode) {
       actionButtons.push({
         type: 'button',
-        action: { type: 'uri', label: 'ดูรายละเอียดงาน', uri: `${frontendUrl}/login/admin?ticketId=${payload.ticketId}` },
+        action: { type: 'uri', label: 'ดูรายละเอียดงาน', uri: `${frontendUrl}/login/admin?ticketCode=${payload.ticketCode}` },
         style: 'primary',
         height: 'sm',
         color: '#059669',
@@ -1200,10 +1200,10 @@ export class LineOANotificationService {
     } catch (e) {}
     
     const actionButtons: any[] = [];
-    if (payload.ticketId) {
+    if (payload.ticketCode) {
       actionButtons.push({
         type: 'button',
-        action: { type: 'uri', label: 'ดูรายละเอียดงาน', uri: `${frontendUrl}/login/admin?ticketId=${payload.ticketId}` },
+        action: { type: 'uri', label: 'ดูรายละเอียดงาน', uri: `${frontendUrl}/login/admin?ticketCode=${payload.ticketCode}` },
         style: 'primary',
         height: 'sm',
         color: '#DC2626',

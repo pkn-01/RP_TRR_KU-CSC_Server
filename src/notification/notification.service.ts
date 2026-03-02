@@ -95,7 +95,7 @@ export class NotificationService {
   }
 
   // Helper method to notify user when ticket is assigned
-  async notifyTicketAssigned(ticketId: number, userId: number, assignedBy: string) {
+  async notifyTicketAssigned(ticketId: number, ticketCode: string, userId: number, assignedBy: string) {
     await this.prisma.notification.create({
       data: {
         userId,
@@ -103,14 +103,14 @@ export class NotificationService {
         title: 'มีงานถูกมอบหมายให้คุณ',
         message: `${assignedBy} ได้มอบหมายงานให้คุณ`,
         ticketId,
-        actionUrl: `/tickets/${ticketId}`,
+        actionUrl: `/admin/repairs/${ticketCode}`,
         status: 'UNREAD' as any,
       },
     });
   }
 
   // Helper method to notify user when ticket status changed
-  async notifyTicketStatusChanged(ticketId: number, userId: number, newStatus: string) {
+  async notifyTicketStatusChanged(ticketId: number, ticketCode: string, userId: number, newStatus: string) {
     await this.prisma.notification.create({
       data: {
         userId,
@@ -118,7 +118,7 @@ export class NotificationService {
         title: 'สถานะงานเปลี่ยนแปลง',
         message: `สถานะของงานของคุณเปลี่ยนเป็น ${newStatus}`,
         ticketId,
-        actionUrl: `/tickets/${ticketId}`,
+        actionUrl: `/admin/repairs/${ticketCode}`,
         status: 'UNREAD' as any,
       },
     });
