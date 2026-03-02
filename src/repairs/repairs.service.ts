@@ -954,7 +954,7 @@ export class RepairsService {
 
     return this.prisma.repairTicket.findMany({
       where,
-      take: limit || 500, // PERF: Default pagination to prevent unbounded queries
+      take: limit, // No default limit as requested
       include: {
         user: { select: this.safeUserSelect },
         assignees: { include: { user: { select: this.safeUserSelect } } },
