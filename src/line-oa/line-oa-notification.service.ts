@@ -1706,7 +1706,7 @@ export class LineOANotificationService {
       header: {
         type: 'box',
         layout: 'vertical',
-        backgroundColor: '#A52A2A',
+        backgroundColor: '#754E47',
         paddingAll: '20px',
         contents: [
           { type: 'text', text: 'รายการแจ้งซ่อมของคุณ', color: '#FFFFFF', size: 'lg', weight: 'bold' },
