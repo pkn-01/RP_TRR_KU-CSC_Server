@@ -34,7 +34,7 @@ export class CloudinaryService {
         },
         (error, result: UploadApiResponse | undefined) => {
           if (error) {
-            this.logger.error('Cloudinary upload error:', error);
+            this.logger.error('เกิดข้อผิดพลาดในการอัปโหลดไฟล์:', error);
             reject(error);
           } else if (result) {
             resolve({
@@ -42,7 +42,7 @@ export class CloudinaryService {
               publicId: result.public_id,
             });
           } else {
-            reject(new Error('Upload failed: No result returned'));
+            reject(new Error('อัปโหลดไฟล์ไม่สำเร็จ: ไม่ได้รับผลลัพธ์'));
           }
         },
       );
@@ -59,7 +59,7 @@ export class CloudinaryService {
     try {
       await cloudinary.uploader.destroy(publicId);
     } catch (error) {
-      this.logger.error('Cloudinary delete error:', error);
+      this.logger.error('เกิดข้อผิดพลาดในการลบไฟล์จาก Cloudinary:', error);
       throw error;
     }
   }
@@ -83,7 +83,7 @@ export class CloudinaryService {
       
       return null;
     } catch (error) {
-      this.logger.error('Error extracting public ID from URL:', error);
+      this.logger.error('เกิดข้อผิดพลาดในการแยก public ID จาก URL:', error);
       return null;
     }
   }
