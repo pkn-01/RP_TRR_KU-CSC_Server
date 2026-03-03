@@ -17,20 +17,18 @@ async function bootstrap() {
   const httpAdapter = app.get(HttpAdapterHost);
   app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
 
-  // SECURITY: Add security headers
+
   app.use(helmet({
-    crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow cross-origin for images
+    crossOriginResourcePolicy: { policy: 'cross-origin' }, 
   }));
 
-  // PERFORMANCE: Enable Gzip compression
+
   app.use(compression());
 
-  // Removed express.json middleware; relying on NestJS with '{ rawBody: true }' handling body parsing.
-  
-  // Serve static files from uploads directory
+
   app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
-  // Debug logging - only in development
+
   if (process.env.NODE_ENV !== 'production') {
     app.use((req, res, next) => {
       console.log(`[REQUEST] ${req.method} ${req.url}`);
@@ -38,14 +36,11 @@ async function bootstrap() {
     });
   }
 
-  // ✅ CORS Configuration
+  // CORS Configuration
   const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:3001',
-    'https://rp-trr-client-internship.vercel.app',
-    'https://rp-trr-server-internship.vercel.app',
     'https://rp-trr-ku-csc-2026.vercel.app',
-
     'https://qa-rp-trr-ku-csc.vercel.app',
     ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
   ];
@@ -58,26 +53,26 @@ async function bootstrap() {
         callback(null, true);
       } else {
         const logger = new Logger('CORS');
-        logger.warn(`Blocked request from origin: ${origin}`);
-        callback(new Error('Not allowed by CORS'));
+        logger.warn(`ไม่อนุญาตให้เข้าถึง: ${origin}`);
+        callback(new Error('ไม่อนุญาตให้เข้าถึง'));
       }
     },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
-    allowedHeaders: 'Origin, X-Requested-With, Content-Type, Accept, Authorization',
+    allowedHeaders: 'Content-Type, Accept, Authorization',
   });
 
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      // SECURITY: Removed skipMissingProperties — required DTO fields are now enforced
+      
     }),
   );
 
   const port = process.env.PORT ? Number(process.env.PORT) : 3000;
   await app.listen(port);
-  console.log(`Application is running on: ${await app.getUrl()}`);
+  console.log(`เซิฟเวอร์ทำงานที่: ${await app.getUrl()}`);
 }
 
 bootstrap();

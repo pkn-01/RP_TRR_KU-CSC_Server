@@ -31,7 +31,7 @@ export class UsersController {
     const limitNum = parseInt(limit, 10);
 
     if (pageNum < 1 || limitNum < 1) {
-      throw new BadRequestException('Page and limit must be greater than 0');
+      throw new BadRequestException('กรุณาระบุหน้าและจำนวนที่ถูกต้อง');
     }
 
     return this.usersService.getAllUsers(pageNum, limitNum, roles);
@@ -47,7 +47,7 @@ export class UsersController {
   @Roles('ADMIN', 'IT')
   async searchUsers(@Query('q') query: string) {
     if (!query || query.trim().length === 0) {
-      throw new BadRequestException('Query parameter is required');
+      throw new BadRequestException('กรุณาระบุคำค้นหา');
     }
     return this.usersService.searchUsers(query.trim());
   }
@@ -56,7 +56,7 @@ export class UsersController {
   @Roles('ADMIN', 'IT')
   async createUser(@Body() data: any) {
     if (!data.name || !data.email || !data.password) {
-      throw new BadRequestException('Name, email, and password are required');
+      throw new BadRequestException('ชื่อผู้ใช้ อีเมล และรหัสผ่านเป็นข้อมูลที่จำเป็น');
     }
     return this.usersService.createUser(data);
   }
@@ -66,7 +66,7 @@ export class UsersController {
   async getUserById(@Param('id') id: string) {
     const userId = parseInt(id, 10);
     if (isNaN(userId)) {
-      throw new BadRequestException('Invalid user ID');
+      throw new BadRequestException('รหัสผู้ใช้ไม่ถูกต้อง');
     }
     return this.usersService.getUserById(userId);
   }
@@ -76,7 +76,7 @@ export class UsersController {
   async updateUser(@Param('id') id: string, @Body() data: any) {
     const userId = parseInt(id, 10);
     if (isNaN(userId)) {
-      throw new BadRequestException('Invalid user ID');
+      throw new BadRequestException('รหัสผู้ใช้ไม่ถูกต้อง');
     }
     return this.usersService.updateUser(userId, data);
   }
@@ -89,10 +89,10 @@ export class UsersController {
   ) {
     const userId = parseInt(id, 10);
     if (isNaN(userId)) {
-      throw new BadRequestException('Invalid user ID');
+      throw new BadRequestException('รหัสผู้ใช้ไม่ถูกต้อง');
     }
     if (!body.newPassword || body.newPassword.trim().length === 0) {
-      throw new BadRequestException('New password is required');
+      throw new BadRequestException('รหัสผ่านใหม่เป็นข้อมูลที่จำเป็น');
     }
     return this.usersService.changePassword(userId, body.newPassword);
   }
@@ -102,7 +102,7 @@ export class UsersController {
   async deleteUser(@Param('id') id: string) {
     const userId = parseInt(id, 10);
     if (isNaN(userId)) {
-      throw new BadRequestException('Invalid user ID');
+      throw new BadRequestException('รหัสผู้ใช้ไม่ถูกต้อง');
     }
     return this.usersService.deleteUser(userId);
   }

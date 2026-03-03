@@ -295,7 +295,7 @@ export class UsersService {
       });
     } catch (error: any) {
       if (error.code === 'P2002' && error.meta?.target?.includes('email')) {
-        throw new ConflictException('Email already exists');
+        throw new ConflictException('อีเมลนี้ถูกใช้งานแล้ว');
       }
       throw error;
     }
@@ -309,7 +309,7 @@ export class UsersService {
     });
 
     if (!userExists) {
-      throw new NotFoundException(`User with ID ${id} not found`);
+      throw new NotFoundException(`ผู้ใช้ ${id} ไม่พบ`);
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -331,10 +331,7 @@ export class UsersService {
     });
   }
 
-  /**
-   * Get or create a User from LINE User ID (Upsert logic)
-   * Uses real display name from LINE and syncs profile
-   */
+ 
   async getOrCreateUserFromLine(lineUserId: string, displayName?: string, pictureUrl?: string) {
     // 0. Explicit handle for Guest
     if (!lineUserId || lineUserId === 'Guest' || lineUserId.toLowerCase() === 'null') {

@@ -33,12 +33,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path: httpAdapter.getRequestUrl(ctx.getRequest()),
       message: isHttpException
-        ? (exception as any).message || 'Request failed'
-        : 'Internal server error', // Don't leak internal error details
+        ? (exception as any).message || 'เกิดข้อผิดพลาด'
+        : 'เกิดข้อผิดพลาดภายในเซิฟเวอร์', // Don't leak internal error details
     };
 
     this.logger.error(
-      `Exception thrown at ${responseBody.path}: ${JSON.stringify(responseBody)}`,
+      `เกิดข้อผิดพลาดที่ ${responseBody.path}: ${JSON.stringify(responseBody)}`,
       (exception as any).stack,
     );
 

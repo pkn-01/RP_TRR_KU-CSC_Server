@@ -118,7 +118,7 @@ export class TicketsService {
             mimeType: file.mimetype,
           });
         } catch (error) {
-          this.logger.error(`Failed to upload file ${file.originalname}:`, error);
+          this.logger.error(`เกิดข้อผิดพลาดในการอัปโหลดไฟล์ ${file.originalname}:`, error);
           // Continue with other files even if one fails
         }
       }
