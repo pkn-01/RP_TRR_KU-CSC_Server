@@ -815,6 +815,7 @@ export class RepairsService {
     return {
       all: {
         total: allTotal,
+        pending: getCount(allStats, RepairTicketStatus.PENDING),
         inProgress: getCount(allStats, RepairTicketStatus.IN_PROGRESS),
         completed: getCount(allStats, RepairTicketStatus.COMPLETED),
         cancelled: getCount(allStats, RepairTicketStatus.CANCELLED),
