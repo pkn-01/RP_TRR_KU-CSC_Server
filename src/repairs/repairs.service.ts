@@ -756,8 +756,11 @@ export class RepairsService {
       endDate = new Date(targetDate);
       endDate.setHours(23, 59, 59, 999);
     } else if (filter === 'week') {
-      // User wanting custom start date for week (start on selected date)
+      // Calendar week: Monday → Sunday
+      const day = targetDate.getDay(); // 0=Sun, 1=Mon...
+      const diffToMonday = day === 0 ? -6 : 1 - day;
       startDate = new Date(targetDate);
+      startDate.setDate(targetDate.getDate() + diffToMonday);
       startDate.setHours(0, 0, 0, 0);
       endDate = new Date(startDate);
       endDate.setDate(startDate.getDate() + 6);
@@ -845,9 +848,11 @@ export class RepairsService {
         endDate = new Date(date);
         endDate.setHours(23, 59, 59, 999);
       } else if (filter === 'week') {
-        const dayOfWeek = date.getDay();
+        // Calendar week: Monday → Sunday
+        const day = date.getDay(); // 0=Sun, 1=Mon...
+        const diffToMonday = day === 0 ? -6 : 1 - day;
         startDate = new Date(date);
-        startDate.setDate(date.getDate() - dayOfWeek);
+        startDate.setDate(date.getDate() + diffToMonday);
         startDate.setHours(0, 0, 0, 0);
         endDate = new Date(startDate);
         endDate.setDate(startDate.getDate() + 6);
