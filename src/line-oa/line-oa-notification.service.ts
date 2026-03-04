@@ -1798,7 +1798,7 @@ export class LineOANotificationService {
   private getStatusConfig(status: string): { color: string; text: string } {
     return ({
       PENDING: { color: COLORS.INFO, text: 'รอดำเนินการ' },
-      ASSIGNED: { color: COLORS.INFO, text: 'มอบหมายแล้ว' },
+      ASSIGNED: { color: COLORS.WARNING, text: 'กำลังดำเนินการ' },
       IN_PROGRESS: { color: COLORS.WARNING, text: 'กำลังดำเนินการ' },
       COMPLETED: { color: COLORS.SUCCESS, text: 'เสร็จสิ้น' },
       CANCELLED: { color: '#EF4444', text: 'ยกเลิก' },
