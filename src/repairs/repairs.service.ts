@@ -407,7 +407,7 @@ export class RepairsService {
          
          const statusTh: Record<string, string> = {
            PENDING: 'รอรับงาน',
-           ASSIGNED: 'กำลังดำเนินการ',
+           ASSIGNED: 'มอบหมายแล้ว',
            IN_PROGRESS: 'กำลังดำเนินการ',
            WAITING_PARTS: 'รออะไหล่',
            COMPLETED: 'เสร็จสิ้น',
