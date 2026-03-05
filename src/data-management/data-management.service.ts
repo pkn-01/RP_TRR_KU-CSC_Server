@@ -310,7 +310,6 @@ export class DataManagementService {
       { header: 'ชื่อ', key: 'name', width: 30 },
       { header: 'จำนวน', key: 'quantity', width: 10 },
       { header: 'หมวดหมู่', key: 'category', width: 20 },
-      { header: 'สถานที่เก็บ', key: 'location', width: 20 },
       { header: 'วันที่สร้าง', key: 'createdAt', width: 20 },
     ];
 
@@ -322,7 +321,6 @@ export class DataManagementService {
         name: item.name,
         quantity: item.quantity,
         category: item.category || '-',
-        location: item.location || '-',
         createdAt: item.createdAt.toISOString(),
       });
     });
