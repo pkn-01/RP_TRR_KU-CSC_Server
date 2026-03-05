@@ -487,6 +487,12 @@ export class RepairsService {
       // PERF: Reuse the pre-fetched attachment image URL for all notifications
       const cachedImageUrl = originalTicket?.attachments?.[0]?.fileUrl;
 
+      // Only treat messageToReporter as "new" if it actually changed from the stored value
+      // This prevents re-notifying the reporter when only internal notes (บันทึกภายใน) are saved
+      const isNewMessageToReporter = !!(dto.messageToReporter &&
+        dto.messageToReporter.trim() !== '' &&
+        dto.messageToReporter !== originalTicket?.messageToReporter);
+
       try {
         // Notify new assignees (PERF: parallelized)
         if (dto.assigneeIds !== undefined) {
@@ -607,7 +613,7 @@ export class RepairsService {
         // Notify reporter on status change
         if (dto.status !== undefined && originalTicket && dto.status !== originalTicket.status) {
           const technicianNames = ticket.assignees.map(a => a.user.name);
-          let remarkMessage = dto.messageToReporter || undefined;
+          let remarkMessage = isNewMessageToReporter ? dto.messageToReporter : undefined;
           
           if (dto.status === 'COMPLETED' && dto.completionReport) {
             remarkMessage = `รายงานการซ่อม: ${dto.completionReport}`;
@@ -643,7 +649,8 @@ export class RepairsService {
         }
 
         // Notify reporter when messageToReporter is sent (without status change)
-        if (dto.messageToReporter && !(dto.status !== undefined && originalTicket && dto.status !== originalTicket.status)) {
+        // Only notify if the message has actually changed (prevents re-notifying on internal-note-only saves)
+        if (isNewMessageToReporter && !(dto.status !== undefined && originalTicket && dto.status !== originalTicket.status)) {
           if (originalTicket?.reporterLineUserId) {
             await this.lineNotificationService.notifyReporterDirectly(
               originalTicket.reporterLineUserId,
