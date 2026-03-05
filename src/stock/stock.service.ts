@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 
@@ -9,22 +9,37 @@ export class StockService {
   async findAll() {
     return this.prisma.stockItem.findMany({
       orderBy: { updatedAt: 'desc' },
+      include: {
+        _count: { select: { transactions: true } },
+      },
     });
   }
 
   async findOne(id: number) {
-    return this.prisma.stockItem.findUnique({
+    const item = await this.prisma.stockItem.findUnique({
       where: { id },
+      include: {
+        transactions: {
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        },
+      },
     });
+    if (!item) {
+      throw new NotFoundException(`ไม่พบสินค้ารหัส #${id}`);
+    }
+    return item;
   }
 
   async create(data: Prisma.StockItemCreateInput) {
-    return this.prisma.stockItem.create({
-      data,
-    });
+    return this.prisma.stockItem.create({ data });
   }
 
   async update(id: number, data: Prisma.StockItemUpdateInput) {
+    const item = await this.prisma.stockItem.findUnique({ where: { id } });
+    if (!item) {
+      throw new NotFoundException(`ไม่พบสินค้ารหัส #${id}`);
+    }
     return this.prisma.stockItem.update({
       where: { id },
       data,
@@ -34,25 +49,58 @@ export class StockService {
   async withdraw(id: number, quantity: number, reference?: string, note?: string, userId?: number) {
     return this.prisma.$transaction(async (tx) => {
       const item = await tx.stockItem.findUnique({ where: { id } });
-      if (!item) throw new Error('Item not found');
-      if (item.quantity < quantity) throw new Error('Insufficient stock');
+      if (!item) {
+        throw new NotFoundException(`ไม่พบสินค้ารหัส #${id}`);
+      }
+      if (item.quantity < quantity) {
+        throw new BadRequestException(
+          `สต๊อกไม่เพียงพอ (คงเหลือ ${item.quantity}, ต้องการเบิก ${quantity})`,
+        );
+      }
 
       const newQty = item.quantity - quantity;
-      
-      // Update Stock Item
+
       await tx.stockItem.update({
         where: { id },
         data: { quantity: newQty },
       });
 
-      // Create Transaction Record
       return tx.stockTransaction.create({
         data: {
           stockItemId: id,
           type: 'OUT',
-          quantity: quantity,
+          quantity,
           previousQty: item.quantity,
-          newQty: newQty,
+          newQty,
+          reference,
+          note,
+          userId,
+        },
+      });
+    });
+  }
+
+  async addStock(id: number, quantity: number, reference?: string, note?: string, userId?: number) {
+    return this.prisma.$transaction(async (tx) => {
+      const item = await tx.stockItem.findUnique({ where: { id } });
+      if (!item) {
+        throw new NotFoundException(`ไม่พบสินค้ารหัส #${id}`);
+      }
+
+      const newQty = item.quantity + quantity;
+
+      await tx.stockItem.update({
+        where: { id },
+        data: { quantity: newQty },
+      });
+
+      return tx.stockTransaction.create({
+        data: {
+          stockItemId: id,
+          type: 'IN',
+          quantity,
+          previousQty: item.quantity,
+          newQty,
           reference,
           note,
           userId,
@@ -70,6 +118,10 @@ export class StockService {
   }
 
   async remove(id: number) {
+    const item = await this.prisma.stockItem.findUnique({ where: { id } });
+    if (!item) {
+      throw new NotFoundException(`ไม่พบสินค้ารหัส #${id}`);
+    }
     return this.prisma.stockItem.delete({
       where: { id },
     });

@@ -252,6 +252,7 @@ model StockItem {
   quantity     Int                @default(0)
   category     String?
   location     String?
+  minStock     Int                @default(0)
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
   transactions StockTransaction[]
