@@ -126,4 +126,11 @@ export class StockService {
       where: { id },
     });
   }
+
+  async deleteCategory(name: string) {
+    return this.prisma.stockItem.updateMany({
+      where: { category: name },
+      data: { category: null },
+    });
+  }
 }

@@ -90,4 +90,10 @@ export class StockController {
   async remove(@Param('id', ParseIntPipe) id: number) {
     return this.stockService.remove(id);
   }
+
+  @Delete('categories/:name')
+  @Roles(Role.ADMIN, Role.IT)
+  async deleteCategory(@Param('name') name: string) {
+    return this.stockService.deleteCategory(name);
+  }
 }
