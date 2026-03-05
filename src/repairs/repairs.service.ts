@@ -611,7 +611,14 @@ export class RepairsService {
         }
 
         // Notify reporter on status change
-        if (dto.status !== undefined && originalTicket && dto.status !== originalTicket.status) {
+        // Skip notification when only internal notes (บันทึกภายใน) triggered the save
+        // Always notify for terminal statuses (COMPLETED, CANCELLED) and new assignee actions
+        const isTerminalStatus = dto.status === 'COMPLETED' || dto.status === 'CANCELLED';
+        const hasNewAssignees = dto.assigneeIds !== undefined && 
+          dto.assigneeIds.some((id: number) => !previousAssigneeIds.includes(id));
+        const shouldNotifyReporter = isTerminalStatus || isNewMessageToReporter || hasNewAssignees;
+
+        if (dto.status !== undefined && originalTicket && dto.status !== originalTicket.status && shouldNotifyReporter) {
           const technicianNames = ticket.assignees.map(a => a.user.name);
           let remarkMessage = isNewMessageToReporter ? dto.messageToReporter : undefined;
           
