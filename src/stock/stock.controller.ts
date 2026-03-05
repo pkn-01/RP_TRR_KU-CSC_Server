@@ -32,6 +32,18 @@ export class StockController {
     });
   }
 
+  @Put(':id')
+  @Roles(Role.ADMIN, Role.IT)
+  async update(@Param('id', ParseIntPipe) id: number, @Body() data: any) {
+    return this.stockService.update(id, {
+      code: data.code,
+      name: data.name,
+      quantity: data.quantity !== undefined ? Number(data.quantity) : undefined,
+      category: data.category,
+      location: data.location,
+    });
+  }
+
   @Delete(':id')
   @Roles(Role.ADMIN, Role.IT)
   async remove(@Param('id', ParseIntPipe) id: number) {

@@ -24,6 +24,13 @@ export class StockService {
     });
   }
 
+  async update(id: number, data: Prisma.StockItemUpdateInput) {
+    return this.prisma.stockItem.update({
+      where: { id },
+      data,
+    });
+  }
+
   async remove(id: number) {
     return this.prisma.stockItem.delete({
       where: { id },
