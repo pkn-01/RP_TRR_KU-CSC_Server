@@ -246,14 +246,34 @@ model Department {
 }
 
 model StockItem {
-  id        Int      @id @default(autoincrement())
-  code      String   @unique
-  name      String
-  quantity  Int      @default(0)
-  category  String?
-  location  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           Int                @id @default(autoincrement())
+  code         String             @unique
+  name         String
+  quantity     Int                @default(0)
+  category     String?
+  location     String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  transactions StockTransaction[]
+}
+
+model StockTransaction {
+  id          Int             @id @default(autoincrement())
+  stockItemId Int
+  stockItem   StockItem       @relation(fields: [stockItemId], references: [id], onDelete: Cascade)
+  type        TransactionType
+  quantity    Int
+  previousQty Int
+  newQty      Int
+  reference   String? // e.g. Repair Ticket Code
+  note        String?
+  userId      Int?
+  createdAt   DateTime        @default(now())
+}
+
+enum TransactionType {
+  IN
+  OUT
 }
 
 enum Role {

@@ -44,6 +44,23 @@ export class StockController {
     });
   }
 
+  @Post(':id/withdraw')
+  @Roles(Role.ADMIN, Role.IT)
+  async withdraw(@Param('id', ParseIntPipe) id: number, @Body() data: any) {
+    return this.stockService.withdraw(
+      id,
+      Number(data.quantity),
+      data.reference,
+      data.note,
+      data.userId, // This could be extracted from JWT if available
+    );
+  }
+
+  @Get('transactions')
+  async getTransactions(@Param('stockItemId') stockItemId?: number) {
+    return this.stockService.findTransactions(stockItemId);
+  }
+
   @Delete(':id')
   @Roles(Role.ADMIN, Role.IT)
   async remove(@Param('id', ParseIntPipe) id: number) {
