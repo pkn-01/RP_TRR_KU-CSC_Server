@@ -38,7 +38,6 @@ export class StockController {
       name: createStockDto.name,
       quantity: createStockDto.quantity,
       category: createStockDto.category,
-      minStock: createStockDto.minStock ?? 0,
     });
   }
 
@@ -53,7 +52,6 @@ export class StockController {
       name: updateStockDto.name,
       quantity: updateStockDto.quantity !== undefined ? updateStockDto.quantity : undefined,
       category: updateStockDto.category,
-      minStock: updateStockDto.minStock,
     });
   }
 

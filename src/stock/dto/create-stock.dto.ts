@@ -21,10 +21,4 @@ export class CreateStockDto {
   @IsString()
   @MaxLength(100, { message: 'หมวดหมู่ต้องไม่เกิน 100 ตัวอักษร' })
   category?: string;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsNumber({}, { message: 'จำนวนขั้นต่ำต้องเป็นตัวเลข' })
-  @Min(0, { message: 'จำนวนขั้นต่ำต้องไม่ติดลบ' })
-  minStock?: number;
 }
