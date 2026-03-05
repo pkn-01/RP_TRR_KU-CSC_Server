@@ -137,10 +137,15 @@ export class StockService {
   async bulkImport(items: any[]) {
     let created = 0;
     let updated = 0;
+    const errors: { code: string; name: string; error: string }[] = [];
 
     for (const item of items) {
       try {
-        // ตรวจสอบก่อนว่ามีรหัสนี้หรือยัง เพื่อให้นับจำนวน created/updated ได้ถูกต้อง
+        if (!item.code || !item.name) {
+          errors.push({ code: item.code || '(ว่าง)', name: item.name || '(ว่าง)', error: 'ไม่มี code หรือ name' });
+          continue;
+        }
+
         const existing = await this.prisma.stockItem.findUnique({
           where: { code: item.code },
         });
@@ -167,11 +172,12 @@ export class StockService {
           created++;
         }
       } catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
         console.error(`Error importing item ${item.code}:`, error);
-        // ข้ามรายการที่พลาดไปเพื่อให้รายการอื่นยังทำงานได้
+        errors.push({ code: item.code || '(ว่าง)', name: item.name || '(ว่าง)', error: errMsg });
       }
     }
 
-    return { created, updated, total: items.length };
+    return { created, updated, total: items.length, errors };
   }
 }
