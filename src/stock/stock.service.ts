@@ -134,33 +134,44 @@ export class StockService {
     });
   }
 
-  async bulkImport(items: Prisma.StockItemCreateInput[]) {
-    return this.prisma.$transaction(async (tx) => {
-      let created = 0;
-      let updated = 0;
+  async bulkImport(items: any[]) {
+    let created = 0;
+    let updated = 0;
 
-      for (const item of items) {
-        const existing = await tx.stockItem.findUnique({
+    for (const item of items) {
+      try {
+        // ตรวจสอบก่อนว่ามีรหัสนี้หรือยัง เพื่อให้นับจำนวน created/updated ได้ถูกต้อง
+        const existing = await this.prisma.stockItem.findUnique({
           where: { code: item.code },
         });
 
         if (existing) {
-          await tx.stockItem.update({
+          await this.prisma.stockItem.update({
             where: { code: item.code },
             data: {
               name: item.name,
-              category: item.category,
+              category: item.category || null,
               quantity: item.quantity,
             },
           });
           updated++;
         } else {
-          await tx.stockItem.create({ data: item });
+          await this.prisma.stockItem.create({
+            data: {
+              code: item.code,
+              name: item.name,
+              category: item.category || null,
+              quantity: item.quantity,
+            },
+          });
           created++;
         }
+      } catch (error) {
+        console.error(`Error importing item ${item.code}:`, error);
+        // ข้ามรายการที่พลาดไปเพื่อให้รายการอื่นยังทำงานได้
       }
+    }
 
-      return { created, updated, total: items.length };
-    });
+    return { created, updated, total: items.length };
   }
 }
