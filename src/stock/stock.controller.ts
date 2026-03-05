@@ -7,6 +7,7 @@ import { CreateStockDto } from './dto/create-stock.dto';
 import { UpdateStockDto } from './dto/update-stock.dto';
 import { WithdrawStockDto } from './dto/withdraw-stock.dto';
 import { AddStockDto } from './dto/add-stock.dto';
+import { BulkImportStockDto } from './dto/bulk-import-stock.dto';
 
 @Controller('api/stock')
 @UseGuards(RolesGuard)
@@ -95,5 +96,11 @@ export class StockController {
   @Roles(Role.ADMIN, Role.IT)
   async deleteCategory(@Param('name') name: string) {
     return this.stockService.deleteCategory(name);
+  }
+
+  @Post('bulk-import')
+  @Roles(Role.ADMIN, Role.IT)
+  async bulkImport(@Body() bulkImportDto: BulkImportStockDto) {
+    return this.stockService.bulkImport(bulkImportDto.items);
   }
 }

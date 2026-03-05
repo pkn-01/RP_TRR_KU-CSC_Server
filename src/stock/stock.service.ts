@@ -133,4 +133,34 @@ export class StockService {
       data: { category: null },
     });
   }
+
+  async bulkImport(items: Prisma.StockItemCreateInput[]) {
+    return this.prisma.$transaction(async (tx) => {
+      let created = 0;
+      let updated = 0;
+
+      for (const item of items) {
+        const existing = await tx.stockItem.findUnique({
+          where: { code: item.code },
+        });
+
+        if (existing) {
+          await tx.stockItem.update({
+            where: { code: item.code },
+            data: {
+              name: item.name,
+              category: item.category,
+              quantity: item.quantity,
+            },
+          });
+          updated++;
+        } else {
+          await tx.stockItem.create({ data: item });
+          created++;
+        }
+      }
+
+      return { created, updated, total: items.length };
+    });
+  }
 }
