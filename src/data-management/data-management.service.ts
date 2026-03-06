@@ -396,6 +396,7 @@ export class DataManagementService {
         switch (type) {
           case 'repairs':
             // Delete in order due to relations
+            const assignmentHistory = await tx.repairAssignmentHistory.deleteMany();
             const repairLogs = await tx.repairTicketLog.deleteMany();
             const repairAssignees = await tx.repairTicketAssignee.deleteMany();
             const repairAttachmentsDeleted = await tx.repairAttachment.deleteMany();
@@ -404,6 +405,7 @@ export class DataManagementService {
             deleted['repairLogs'] = repairLogs.count;
             deleted['repairAssignees'] = repairAssignees.count;
             deleted['repairAttachments'] = repairAttachmentsDeleted.count;
+            deleted['assignmentHistory'] = assignmentHistory.count;
             break;
 
           case 'tickets':
@@ -428,7 +430,9 @@ export class DataManagementService {
             break;
 
           case 'stock':
+            const stockTransactions = await tx.stockTransaction.deleteMany();
             const stock = await tx.stockItem.deleteMany();
+            deleted['stockTransactions'] = stockTransactions.count;
             deleted['stock'] = stock.count;
             break;
 
