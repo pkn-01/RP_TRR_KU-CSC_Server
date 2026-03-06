@@ -27,70 +27,8 @@ model User {
   repairTickets     RepairTicket[]            @relation("RepairUserTickets")
   repairAssignments RepairTicketAssignee[]
   repairLogs        RepairTicketLog[]
-  assigned          Ticket[]                  @relation("AssignedTickets")
-  tickets           Ticket[]                  @relation("UserTickets")
-  logs              TicketLog[]
   assignedHistory   RepairAssignmentHistory[] @relation("Assigner")
   receivedHistory   RepairAssignmentHistory[] @relation("Assignee")
-}
-
-// Ticket
-model Ticket {
-  id                 Int                @id @default(autoincrement())
-  ticketCode         String             @unique
-  title              String
-  description        String
-  problemCategory    ProblemCategory
-  problemSubcategory ProblemSubcategory
-  equipmentName      String
-  equipmentId        String?
-  location           String
-  category           String
-  priority           Priority
-  status             TicketStatus       @default(OPEN)
-  notes              String?
-  requiredDate       String?
-  guestName          String?
-  guestEmail         String?
-  guestPhone         String?
-  guestDepartment    String?
-  userId             Int?
-  assignedTo         Int?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  attachments        Attachment[]
-  assignee           User?              @relation("AssignedTickets", fields: [assignedTo], references: [id])
-  user               User?              @relation("UserTickets", fields: [userId], references: [id])
-  logs               TicketLog[]
-
-  // PERF: Indexes for common query patterns
-  @@index([status])
-  @@index([userId])
-  @@index([createdAt])
-  @@index([assignedTo])
-}
-
-// Attachment
-model Attachment {
-  id        Int      @id @default(autoincrement())
-  ticketId  Int
-  filename  String
-  fileUrl   String
-  fileSize  Int
-  mimeType  String
-  createdAt DateTime @default(now())
-  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-}
-
-model TicketLog {
-  id        Int          @id @default(autoincrement())
-  ticketId  Int
-  status    TicketStatus
-  comment   String?
-  updatedBy Int
-  createdAt DateTime     @default(now())
-  ticket    Ticket       @relation(fields: [ticketId], references: [id])
-  user      User         @relation(fields: [updatedBy], references: [id])
 }
 
 model Notification {
@@ -296,18 +234,6 @@ enum NotificationStatus {
   READ
 }
 
-enum TicketStatus {
-  OPEN
-  IN_PROGRESS
-  DONE
-}
-
-enum Priority {
-  LOW
-  MEDIUM
-  HIGH
-}
-
 enum RepairTicketStatus {
   PENDING
   ASSIGNED
@@ -343,27 +269,6 @@ enum ProblemCategory {
   PERIPHERAL
   EMAIL_OFFICE365
   ACCOUNT_PASSWORD
-  OTHER
-}
-
-enum ProblemSubcategory {
-  INTERNET_DOWN
-  SLOW_CONNECTION
-  WIFI_ISSUE
-  MONITOR_BROKEN
-  KEYBOARD_BROKEN
-  MOUSE_BROKEN
-  COMPUTER_CRASH
-  INSTALLATION
-  LICENSE
-  PERFORMANCE
-  JAM
-  NO_PRINTING
-  CARTRIDGE
-  INSTALLATION_AC
-  MALFUNCTION_AC
-  POWER_DOWN
-  LIGHT_PROBLEM
   OTHER
 }
 

@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
-import { TicketsModule } from './tickets/tickets.module';
 import { NotificationModule } from './notification/notification.module';
 import { UsersModule } from './users/users.module';
 import { LoansModule } from './loans/loans.module';
@@ -22,7 +21,6 @@ import { JwtAuthGuard } from './auth/jwt.guard';
       limit: 20,
     }]),
     AuthModule,
-    TicketsModule,
     NotificationModule,
     UsersModule,
     LoansModule,
