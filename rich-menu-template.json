@@ -16,7 +16,7 @@
       "action": {
         "type": "uri",
         "label": "🔧 แจ้งซ่อม",
-        "uri": "https://rp-trr-client-twxn.vercel.app/repairs/liff?action=create"
+        "uri": "https://rp-trr-ku-csc-2026.vercel.app/repairs/liff?action=create"
       }
     },
     {
@@ -29,7 +29,7 @@
       "action": {
         "type": "uri",
         "label": "📋 ตรวจสอบสถานะ",
-        "uri": "https://rp-trr-client-twxn.vercel.app/repairs/liff?action=status"
+        "uri": "https://rp-trr-ku-csc-2026.vercel.app/repairs/liff?action=status"
       }
     },
     {
@@ -42,7 +42,7 @@
       "action": {
         "type": "uri",
         "label": "❓ คำถามที่พบบ่อย",
-        "uri": "https://rp-trr-client-twxn.vercel.app/repairs/liff?action=faq"
+        "uri": "https://rp-trr-ku-csc-2026.vercel.app/repairs/liff?action=faq"
       }
     },
     {
@@ -55,7 +55,7 @@
       "action": {
         "type": "uri",
         "label": "📞 ติดต่อเรา",
-        "uri": "https://rp-trr-client-twxn.vercel.app/repairs/liff?action=contact"
+        "uri": "https://rp-trr-ku-csc-2026.vercel.app/repairs/liff?action=contact"
       }
     }
   ]
