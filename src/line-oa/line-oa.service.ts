@@ -1,3 +1,4 @@
+// ===== API LINE พื้นฐาน | LINE OA Base Service =====
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as line from '@line/bot-sdk';
@@ -8,7 +9,7 @@ export class LineOAService {
   private readonly lineClient: line.Client;
 
   constructor(private readonly prisma: PrismaService) {
-    // Initialize LINE Bot SDK Client
+    // การเริ่มต้นใช้งาน LINE Bot SDK Client
     this.lineClient = new line.Client({
       channelSecret: process.env.LINE_CHANNEL_SECRET || '',
       channelAccessToken: process.env.LINE_ACCESS_TOKEN || '',

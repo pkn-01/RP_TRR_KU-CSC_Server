@@ -1,8 +1,11 @@
+// ===== ระบบแจ้งซ่อม | Repair Ticket Service =====
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { RepairTicketStatus, UrgencyLevel } from '@prisma/client';
+import { RepairTicketStatus, UrgencyLevel, Prisma } from '@prisma/client';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
 import { LineOANotificationService } from '../line-oa/line-oa-notification.service';
+import { CreateRepairTicketDto } from './dto/create-repair-ticket.dto';
+import { UpdateRepairTicketDto } from './dto/update-repair-ticket.dto';
 import * as path from 'path';
 
 // Security: Allowed file types and size limits
@@ -103,7 +106,8 @@ export class RepairsService {
     return `${prefix}${sequenceStr}`;
   }
 
-  async create(userId: number, dto: any, files?: Express.Multer.File[], lineUserId?: string) {
+  // สร้างรายการแจ้งซ่อมใหม่ พร้อมอัปโหลดไฟล์และแจ้งเตือน | Create new repair ticket with files and notifications
+  async create(userId: number, dto: CreateRepairTicketDto, files?: Express.Multer.File[], lineUserId?: string) {
     // Debug logging
     this.logger.log(`Creating ticket - lineUserId parameter: ${lineUserId || 'NOT PROVIDED'}`);
     this.logger.log(`Creating ticket - dto.reporterLineId: ${dto.reporterLineId || 'NOT PROVIDED'}`);
@@ -114,7 +118,7 @@ export class RepairsService {
     // Only needed if lineUserId is not provided
     const linkingCode = lineUserId ? undefined : `${ticketCode}-${this.generateRandomCode(4)}`;
     
-    const attachmentData: any[] = [];
+    const attachmentData: Prisma.RepairAttachmentCreateWithoutRepairTicketInput[] = [];
 
     // Upload files to Cloudinary with security validations
     if (files && files.length > 0) {
@@ -233,6 +237,7 @@ export class RepairsService {
     profilePicture: true,
   } as const;
 
+  // ดึงข้อมูลแจ้งซ่อมตาม ID (Safe select สำหรับ User) | Find repair ticket by ID
   async findOne(id: number) {
     const ticket = await this.prisma.repairTicket.findUnique({
       where: { id },
@@ -254,6 +259,7 @@ export class RepairsService {
     return ticket;
   }
 
+  // ค้นหาใบแจ้งซ่อมจาก Ticket Code | Find repair ticket by code
   async findByCode(ticketCode: string) {
     const ticket = await this.prisma.repairTicket.findUnique({
       where: { ticketCode },
@@ -275,7 +281,8 @@ export class RepairsService {
     return ticket;
   }
 
-  async update(id: number, dto: any, updatedById: number, files?: Express.Multer.File[]) {
+  // อัปเดตข้อมูลใบแจ้งซ่อม, จัดการผู้รับผิดชอบ และแจ้งเตือน LINE | Update ticket, assignees, and send notifications
+  async update(id: number, dto: UpdateRepairTicketDto, updatedById: number, files?: Express.Multer.File[]) {
     // Get original ticket with attachments to compare for notifications (single query)
     const originalTicket = await this.prisma.repairTicket.findUnique({
       where: { id },
@@ -295,7 +302,7 @@ export class RepairsService {
     }
 
     // Build update data with only valid fields
-    const updateData: any = {};
+    const updateData: Prisma.RepairTicketUpdateInput = {};
 
     if (dto.status !== undefined) updateData.status = dto.status;
     if (dto.notes !== undefined) updateData.notes = dto.notes;
@@ -336,10 +343,10 @@ export class RepairsService {
           });
 
           //LOG ASSIGNMENT HISTORY
-          const addedIds = dto.assigneeIds.filter((id: number) => !previousAssigneeIds.includes(id));
-          const removedIds = previousAssigneeIds.filter((id: number) => !dto.assigneeIds.includes(id));
+          const addedIds = (dto.assigneeIds || []).filter((id: number) => !previousAssigneeIds.includes(id));
+          const removedIds = previousAssigneeIds.filter((id: number) => !(dto.assigneeIds || []).includes(id));
 
-          const historyData: any[] = [];
+          const historyData: Prisma.RepairAssignmentHistoryCreateManyInput[] = [];
            // Log Assignments
           for (const uid of addedIds) {
               historyData.push({
@@ -449,7 +456,7 @@ export class RepairsService {
 
       // Log Operational Notes and Messages
       if (dto.notes || dto.messageToReporter) {
-          const logs: any[] = [];
+          const logs: Prisma.RepairAssignmentHistoryCreateManyInput[] = [];
           
           if (dto.notes) {
               logs.push({
@@ -704,6 +711,7 @@ export class RepairsService {
     }
   }
 
+  // ลบใบแจ้งซ่อมออกจากระบบ (Hard Delete) | Remove repair ticket from system
   async remove(id: number) {
     // Get ticket data first to check existence
     const ticket = await this.prisma.repairTicket.findUnique({
@@ -733,6 +741,7 @@ export class RepairsService {
     return { message: 'Deleted successfully', ticketCode: ticket.ticketCode };
   }
 
+  // ดึงข้อมูลสถิติภาพรวมแยกตามสถานะ | Get summary statistics by status
   async getStatistics() {
     const stats = await this.prisma.repairTicket.groupBy({
       by: ['status'],
@@ -757,6 +766,7 @@ export class RepairsService {
     };
   }
 
+  // ดึงข้อมูลสถิติสำหรับการแสดงผลบน Dashboard | Get dashboard visualization statistics
   async getDashboardStatistics(filter: 'day' | 'week' | 'month' = 'day', date?: Date, limit?: number) {
     const targetDate = date || new Date();
     

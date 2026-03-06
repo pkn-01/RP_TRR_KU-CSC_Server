@@ -1,9 +1,10 @@
+// ===== ระบบแจ้งเตือนในแอป =====
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface CreateNotificationDto {
   userId: number;
-  type: string; // NotificationType
+  type: string; // แจ้งเตือน
   title: string;
   message: string;
   ticketId?: number;
@@ -14,6 +15,7 @@ export interface CreateNotificationDto {
 export class NotificationService {
   constructor(private prisma: PrismaService) {}
 
+  // สร้างการแจ้งเตือน 
   async createNotification(data: CreateNotificationDto) {
     return await this.prisma.notification.create({
       data: {
@@ -27,6 +29,7 @@ export class NotificationService {
     });
   }
 
+  // ดึงรายการแจ้งเตือนของผู้ใช้ 
   async getUserNotifications(userId: number, limit: number = 20) {
     return await this.prisma.notification.findMany({
       where: { userId },
@@ -35,6 +38,7 @@ export class NotificationService {
     });
   }
 
+  // นับจำนวนการแจ้งเตือนที่ยังไม่ได้อ่าน 
   async getUnreadCount(userId: number) {
     return await this.prisma.notification.count({
       where: {
@@ -44,6 +48,7 @@ export class NotificationService {
     });
   }
 
+  // ทำเครื่องหมายว่าอ่านแล้ว 
   async markAsRead(notificationId: number) {
     return await this.prisma.notification.update({
       where: { id: notificationId },
@@ -51,6 +56,7 @@ export class NotificationService {
     });
   }
 
+  // ทำเครื่องหมายแจ้งเตือนทั้งหมดว่าอ่านแล้ว 
   async markAllAsRead(userId: number) {
     return await this.prisma.notification.updateMany({
       where: {
@@ -61,12 +67,14 @@ export class NotificationService {
     });
   }
 
+  // ลบการแจ้งเตือนตาม ID 
   async deleteNotification(notificationId: number) {
     return await this.prisma.notification.delete({
       where: { id: notificationId },
     });
   }
 
+  // ลบค้นหาแจ้งเตือนทั้งหมดของผู้ใช้ 
   async deleteAllUserNotifications(userId: number) {
     return await this.prisma.notification.deleteMany({
       where: { userId },

@@ -1,3 +1,4 @@
+// ===== เชื่อมบัญชี LINE กับระบบ | LINE Linking Service =====
 import {
   Injectable,
   Logger,

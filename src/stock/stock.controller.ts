@@ -14,23 +14,27 @@ import { BulkImportStockDto } from './dto/bulk-import-stock.dto';
 export class StockController {
   constructor(private readonly stockService: StockService) {}
 
+  // ดึงข้อมูลรายการสินค้าทั้งหมดในสต็อก | Get all stock items
   @Get()
   async findAll() {
     return this.stockService.findAll();
   }
 
   // ต้องอยู่ก่อน :id เพื่อไม่ให้ NestJS จับ "transactions" เป็น id
+  // ดึงประวัติการเคลื่อนไหวสต็อก (In/Out) | Get stock transaction history
   @Get('transactions')
   async getTransactions(@Query('stockItemId') stockItemId?: string) {
     const parsedId = stockItemId ? parseInt(stockItemId, 10) : undefined;
     return this.stockService.findTransactions(parsedId);
   }
 
+  // ดึงข้อมูลสินค้าตาม ID | Get stock item by ID
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.stockService.findOne(id);
   }
 
+  // เพิ่มรายการสินค้าใหม่เข้าสู่ระบบ | Create new stock item
   @Post()
   @Roles(Role.ADMIN, Role.IT)
   async create(@Body() createStockDto: CreateStockDto) {
@@ -42,6 +46,7 @@ export class StockController {
     });
   }
 
+  // อัปเดตข้อมูลรายละเอียดสินค้า | Update stock item info
   @Put(':id')
   @Roles(Role.ADMIN, Role.IT)
   async update(
@@ -56,6 +61,7 @@ export class StockController {
     });
   }
 
+  // บันทึกการเบิกสินค้าออกจากสต็อก | Record stock withdrawal
   @Post(':id/withdraw')
   @Roles(Role.ADMIN, Role.IT)
   async withdraw(
@@ -71,6 +77,7 @@ export class StockController {
     );
   }
 
+  // บันทึกการเพิ่มจำนวนสินค้าเข้าสต็อก | Record stock addition
   @Post(':id/add-stock')
   @Roles(Role.ADMIN, Role.IT)
   async addStock(
@@ -86,18 +93,21 @@ export class StockController {
     );
   }
 
+  // ลบรายการสินค้าออกจากระบบ | Remove stock item from system
   @Delete(':id')
   @Roles(Role.ADMIN, Role.IT)
   async remove(@Param('id', ParseIntPipe) id: number) {
     return this.stockService.remove(id);
   }
 
+  // ล้างค่าหมวดหมู่สินค้า | Clear product category
   @Delete('categories/:name')
   @Roles(Role.ADMIN, Role.IT)
   async deleteCategory(@Param('name') name: string) {
     return this.stockService.deleteCategory(name);
   }
 
+  // นำเข้าข้อมูลสินค้าจำนวนมาก | Bulk import stock items
   @Post('bulk-import')
   @Roles(Role.ADMIN, Role.IT)
   async bulkImport(@Body() bulkImportDto: BulkImportStockDto) {

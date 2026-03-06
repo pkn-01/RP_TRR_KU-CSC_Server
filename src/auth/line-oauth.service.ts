@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
 
 export interface LineAuthUrlResponse {
   auth_url: string;
@@ -21,6 +21,7 @@ export interface LineUserProfile {
 
 @Injectable()
 export class LineOAuthService {
+  private readonly logger = new Logger(LineOAuthService.name);
   private readonly lineAuthEndpoint = 'https://access.line.me/oauth2/v2.1/authorize';
   private readonly lineTokenEndpoint = 'https://api.line.me/oauth2/v2.1/token';
   private readonly lineTokenInfoEndpoint = 'https://api.line.me/v2/oauth/tokeninfo';
@@ -28,20 +29,11 @@ export class LineOAuthService {
 
   constructor() {}
 
-  /**
-   * Generate LINE OAuth authorization URL
-   * @returns LineAuthUrlResponse containing auth_url, client_id, redirect_uri, and state
-   */
+  // สร้าง LINE OAuth Authorization URL สำหรับการล็อกอิน
   generateAuthUrl(): LineAuthUrlResponse {
     const clientId = process.env.LINE_CHANNEL_ID || '';
     const redirectUri = this.getRedirectUri();
     const state = this.generateState();
-
-    // Debug: Verify env variables are loaded
-    this.logDebug('LINE LOGIN DEBUG', {
-      channelId: process.env.LINE_CHANNEL_ID,
-      redirectUri: process.env.LINE_REDIRECT_URI,
-    });
 
     if (!clientId) {
       throw new Error('LINE credentials not configured: LINE_CHANNEL_ID is missing');
@@ -54,12 +46,7 @@ export class LineOAuthService {
     authUrl.searchParams.append('state', state);
     authUrl.searchParams.append('scope', 'profile openid');
 
-    console.log('[LINE Auth] Generated authorization URL:', {
-      clientId,
-      redirectUri,
-      state: state.substring(0, 5) + '...',
-    });
-    this.logDebug('LINE LOGIN DEBUG', { finalRedirectUri: redirectUri });
+    this.logger.log('Generated LINE authorization URL');
 
     return {
       auth_url: authUrl.toString(),
@@ -69,28 +56,17 @@ export class LineOAuthService {
     };
   }
 
-  /**
-   * Exchange authorization code for access token
-   * @throws UnauthorizedException if exchange fails
-   */
+  // แลก Authorization Code เป็น Access Token
   async exchangeCodeForToken(code: string): Promise<LineCallbackResponse> {
     const clientId = process.env.LINE_CHANNEL_ID || '';
     const clientSecret = process.env.LINE_CHANNEL_SECRET || '';
     const redirectUri = this.getRedirectUri();
 
-    // Verify all env variables before token exchange
-    this.logDebug('TOKEN EXCHANGE DEBUG', {
-      clientId,
-      redirectUri,
-      clientSecretExists: !!clientSecret,
-    });
-
     if (!clientId || !clientSecret) {
       throw new Error('LINE credentials not configured');
     }
 
-    console.log('[LINE Auth] Exchanging authorization code for access token');
-    console.log('[LINE Auth] Using redirect_uri:', redirectUri);
+    this.logger.log('Exchanging authorization code for access token');
 
     const tokenParams = new URLSearchParams({
       grant_type: 'authorization_code',
@@ -99,15 +75,6 @@ export class LineOAuthService {
       client_id: clientId,
       client_secret: clientSecret,
     });
-
-    // 🔴 DEBUG: Log exact params being sent to LINE API
-    console.log('[LINE Auth] 🔴 DETAILED TOKEN EXCHANGE DEBUG:');
-    console.log('[LINE Auth] grant_type:', 'authorization_code');
-    console.log('[LINE Auth] code:', code.substring(0, 20) + '...');
-    console.log('[LINE Auth] redirect_uri:', redirectUri);
-    console.log('[LINE Auth] client_id:', clientId);
-    console.log('[LINE Auth] client_secret:', clientSecret.substring(0, 10) + '...');
-    console.log('[LINE Auth] Sending to:', this.lineTokenEndpoint);
 
     try {
       const response = await fetch(this.lineTokenEndpoint, {
@@ -121,25 +88,13 @@ export class LineOAuthService {
       const responseData = await response.json();
 
       if (!response.ok) {
-        console.error('[LINE Auth] ❌ TOKEN EXCHANGE FAILED');
-        console.error('[LINE Auth] HTTP Status:', response.status);
-        console.error('[LINE Auth] Error response:', JSON.stringify(responseData, null, 2));
-        console.error('[LINE Auth] Token params sent:', {
-          grant_type: 'authorization_code',
-          code: code.substring(0, 20) + '...',
-          redirect_uri: redirectUri,
-          client_id: clientId,
-        });
+        this.logger.error(`TOKEN EXCHANGE FAILED - HTTP ${response.status}: ${responseData.error || 'Unknown'}`);
 
-        // ✅ Check for redirect_uri mismatch specifically
-        // This is the most common OAuth error - frontend and backend using different redirect URIs
+        // ตรวจสอบ redirect_uri mismatch
         if ((responseData.error === 'invalid_grant' || responseData.error === 'invalid_request') && 
             responseData.error_description && 
             responseData.error_description.toLowerCase().includes('redirect_uri')) {
-          console.error('[LINE Auth] 🔴 REDIRECT_URI MISMATCH DETECTED!');
-          console.error('[LINE Auth] Backend redirect_uri:', redirectUri);
-          console.error('[LINE Auth] Expected by LINE Console: Check your LINE Console settings');
-          console.error('[LINE Auth] Ensure LINE_REDIRECT_URI in .env matches LINE Console exactly');
+          this.logger.error(`REDIRECT_URI MISMATCH - Backend: ${redirectUri}`);
           throw new UnauthorizedException(
             `redirect_uri mismatch. ` +
             `Backend is using: "${redirectUri}". ` +
@@ -147,12 +102,10 @@ export class LineOAuthService {
           );
         }
 
-        // ✅ Check for code_verifier/code_challenge mismatch (PKCE related)
+        // ตรวจสอบ code_verifier/code_challenge mismatch (PKCE)
         if (responseData.error === 'invalid_grant' && 
             responseData.error_description && 
             responseData.error_description.toLowerCase().includes('code_verifier')) {
-          console.error('[LINE Auth] 🔴 CODE_VERIFIER MISMATCH - Authorization code may have expired');
-          console.error('[LINE Auth] Try logging in again - authorization codes expire after 10 minutes');
           throw new UnauthorizedException(
             `Authorization code expired or invalid. Please try logging in again.`
           );
@@ -163,23 +116,20 @@ export class LineOAuthService {
         );
       }
 
-      console.log('[LINE Auth] ✅ Token exchange successful');
+      this.logger.log('Token exchange successful');
       return {
         access_token: responseData.access_token,
         user_id: responseData.user_id,
       };
     } catch (error: any) {
-      console.error('[LINE Auth] Error exchanging code:', error.message);
+      this.logger.error(`Error exchanging code: ${error.message}`);
       throw error instanceof UnauthorizedException 
         ? error 
         : new UnauthorizedException(`Failed to authenticate with LINE: ${error.message}`);
     }
   }
 
-  /**
-   * Get LINE user ID from access token
-   * @throws UnauthorizedException if token verification fails
-   */
+  // ดึง LINE User ID จาก Access Token
   async getUserId(accessToken: string): Promise<string> {
     try {
       const response = await fetch(this.lineTokenInfoEndpoint, {
@@ -203,17 +153,14 @@ export class LineOAuthService {
 
       return data.user_id;
     } catch (error: any) {
-      console.error('[LINE Auth] Error getting LINE user ID:', error.message);
+      this.logger.error(`Error getting LINE user ID: ${error.message}`);
       throw error instanceof UnauthorizedException 
         ? error 
         : new UnauthorizedException('Failed to get LINE user ID');
     }
   }
 
-  /**
-   * Get LINE user profile information
-   * @returns LineUserProfile or default profile if request fails
-   */
+  // ดึงข้อมูลโปรไฟล์ LINE ของผู้ใช้
   async getUserProfile(accessToken: string): Promise<LineUserProfile> {
     try {
       const response = await fetch(this.lineProfileEndpoint, {
@@ -223,88 +170,60 @@ export class LineOAuthService {
       });
 
       if (!response.ok) {
-        console.warn('[LINE Auth] Failed to get LINE profile, using default');
+        this.logger.warn('Failed to get LINE profile, using default');
         return { displayName: 'LINE User', userId: '' };
       }
 
       return await response.json();
     } catch (error) {
-      console.error('[LINE Auth] Error getting LINE profile:', error);
+      this.logger.error('Error getting LINE profile');
       return { displayName: 'LINE User', userId: '' };
     }
   }
 
-  /**
-   * Verify that redirect_uri matches what's configured in env
-   * @returns true if redirect_uri is properly configured
-   */
+  // ตรวจสอบว่า redirect_uri ถูกตั้งค่าอย่างถูกต้อง
   verifyRedirectUri(): boolean {
     const redirectUri = process.env.LINE_REDIRECT_URI;
     
     if (!redirectUri) {
-      console.warn('[LINE Auth] LINE_REDIRECT_URI not configured in .env');
+      this.logger.warn('LINE_REDIRECT_URI not configured in .env');
       return false;
     }
 
-    // Basic validation
     if (!redirectUri.startsWith('https://')) {
-      console.warn('[LINE Auth] redirect_uri must use https://');
+      this.logger.warn('redirect_uri must use https://');
       return false;
     }
-
-    // Allow redirect URIs both with and without trailing slash
-    // but prefer explicit configuration in environment variables
 
     return true;
   }
 
-  /**
-   * Private helper methods
-   */
-
+  // ดึง Redirect URI จาก Environment Variable
   private getRedirectUri(): string {
     let redirectUri = process.env.LINE_REDIRECT_URI;
 
-    // Fallback if LINE_REDIRECT_URI is not set
     if (!redirectUri && process.env.FRONTEND_URL) {
       redirectUri = `${process.env.FRONTEND_URL}/auth/line/callback`;
     }
 
-    // Specific Fallback for QA Environment (if env var is missing)
     if (!redirectUri && (process.env.NODE_ENV === 'production' || !process.env.NODE_ENV)) {
-        // Check if we are likely in the QA environment based on other signals or just default to it if nothing else is set
-        // This is a safety net for the specific user request
-         redirectUri = 'https://qa-rp-trr-ku-csc.vercel.app/auth/line/callback';
+      redirectUri = 'https://qa-rp-trr-ku-csc.vercel.app/auth/line/callback';
     }
 
     if (!redirectUri) {
-        // Last resort fallback for local development
-       redirectUri = 'http://localhost:3000/auth/line/callback';
+      redirectUri = 'http://localhost:3000/auth/line/callback';
     }
 
-    // ✅ Validate redirect_uri protocol
     if (!redirectUri.startsWith('https://') && !redirectUri.startsWith('http://')) {
       throw new Error(
         `LINE_REDIRECT_URI must use https:// or http:// protocol. Got: ${redirectUri}`
       );
     }
 
-    // ✅ CRITICAL: Return EXACTLY as configured - no normalization!
-    // The redirect_uri MUST match byte-for-byte with LINE Console Callback URL.
-    // Do NOT add or remove trailing slash - use exactly what's in env.
-    console.log('[LINE Auth] Using redirect_uri:', redirectUri);
     return redirectUri;
   }
 
   private generateState(): string {
     return Math.random().toString(36).substring(7);
-  }
-
-  private logDebug(label: string, data: Record<string, any>): void {
-    console.log(`[🔴 ${label}] ==========================================`);
-    Object.entries(data).forEach(([key, value]) => {
-      console.log(`[🔴 ${label}] ${key}:`, value);
-    });
-    console.log(`[🔴 ${label}] ==========================================`);
   }
 }

@@ -1,3 +1,4 @@
+// ===== จัดการข้อมูลระบบ | Data Management Service =====
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CloudinaryService } from '../cloudinary/cloudinary.service';
@@ -20,30 +21,31 @@ export class DataManagementService {
     repairs: {
       key: 'repairs',
       label: 'การแจ้งซ่อม',
-      description: 'ข้อมูลการแจ้งซ่อมทั้งหมด รวมถึง logs และ attachments',
+      
     },
     loans: {
       key: 'loans',
       label: 'การยืม',
-      description: 'ข้อมูลการยืมอุปกรณ์ทั้งหมด',
+     
     },
     notifications: {
       key: 'notifications',
       label: 'การแจ้งเตือน',
-      description: 'การแจ้งเตือนทั้งหมด รวมถึง LINE notifications',
+      
     },
     stock: {
       key: 'stock',
       label: 'สต็อก',
-      description: 'ข้อมูลสินค้าคงคลังทั้งหมด',
+      
     },
     departments: {
       key: 'departments',
       label: 'แผนก',
-      description: 'ข้อมูลแผนกทั้งหมด',
+      
     },
   };
 
+  // ดึงข้อมูลประเภทข้อมูลที่สามารถจัดการได้พร้อมจำนวน Record | Get data types with counts for management
   async getDataTypes(): Promise<DataTypeInfo[]> {
     const counts = await this.getDataCounts();
     
@@ -72,6 +74,7 @@ export class DataManagementService {
     };
   }
 
+  // ส่งออกข้อมูลเป็นไฟล์ Excel หรือ Zip (กรณีหลายประเภท) | Export data to Excel or Zip file
   async exportToExcel(types: DataType[]): Promise<{ buffer: Buffer; fileName: string; mimeType: string }> {
     // If only one type is selected, export directly as .xlsx
     if (types.length === 1) {
@@ -312,6 +315,7 @@ export class DataManagementService {
     headerRow.height = 25;
   }
 
+  // ล้างข้อมูลในระบบแยกตามประเภท (ลบทั้ง DB และ Cloudinary) | Clear system data by types (DB and Cloudinary)
   async clearData(types: DataType[]): Promise<{ success: boolean; deleted: Record<string, number> }> {
     const deleted: Record<string, number> = {};
     const publicIdsToDelete: string[] = [];

@@ -1,18 +1,21 @@
+// ===== จัดการผู้ใช้ | User Management Service =====
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
+  // ดึงข้อมูลผู้ใช้ทั้งหมด (พร้อม Filter ตาม Role) 
   async getAllUsers(page: number = 1, limit: number = 10, roles?: string) {
     const skip = (page - 1) * limit;
     
-    const where: any = {};
+    const where: Prisma.UserWhereInput = {};
     if (roles) {
       const rolesArray = roles.split(',').map(r => r.trim());
-      where.role = { in: rolesArray };
+      where.role = { in: rolesArray as Role[] };
     }
 
     const [users, total] = await Promise.all([
@@ -52,13 +55,8 @@ export class UsersService {
       this.prisma.user.count({ where }),
     ]);
 
-    // Map users to flatten LINE info
-    const mappedUsers = users.map(user => ({
-      ...user,
-      lineUserId: user.lineOALink?.lineUserId || user.lineId,
-      displayName: user.lineOALink?.displayName,
-      pictureUrl: user.lineOALink?.pictureUrl,
-    }));
+    // แปลงข้อมูลผู้ใช้ให้แบนราบ 
+    const mappedUsers = users.map(user => this.mapUserLineInfo(user));
 
     return {
       data: mappedUsers,
@@ -71,6 +69,7 @@ export class UsersService {
     };
   }
 
+  // ดึงรายชื่อเจ้าหน้าที่ IT และ Admin 
   async getITStaff() {
     return this.prisma.user.findMany({
       where: {
@@ -98,14 +97,10 @@ export class UsersService {
       orderBy: {
         name: 'asc'
       }
-    }).then(users => users.map(user => ({
-      ...user,
-      lineUserId: user.lineOALink?.lineUserId || user.lineId,
-      displayName: user.lineOALink?.displayName,
-      pictureUrl: user.lineOALink?.pictureUrl
-    })));
+    }).then(users => users.map(user => this.mapUserLineInfo(user)));
   }
 
+  // ดึงข้อมูลผู้ใช้ตาม ID 
   async getUserById(id: number) {
     const user = await this.prisma.user.findUnique({
       where: { id },
@@ -113,7 +108,7 @@ export class UsersService {
         id: true,
         name: true,
         email: true,
-        // SECURITY: password hash removed from select - never expose to API
+        // รหัสผ่านถูกลบออกจากการแสดงผล - ไม่ควรเปิดเผยต่อ API 
         role: true,
         department: true,
         phoneNumber: true,
@@ -141,16 +136,12 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    return {
-        ...user,
-        lineUserId: user.lineOALink?.lineUserId || user.lineId,
-        displayName: user.lineOALink?.displayName,
-        pictureUrl: user.lineOALink?.pictureUrl,
-    };
+    return this.mapUserLineInfo(user);
   }
 
+  // อัปเดตข้อมูลผู้ใช้ 
   async updateUser(id: number, data: any) {
-    // Check if user exists first
+    // ตรวจสอบว่าผู้ใช้มีอยู่จริงหรือไม่ 
     const userExists = await this.prisma.user.findUnique({
       where: { id },
       select: { id: true },
@@ -160,7 +151,7 @@ export class UsersService {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
 
-    const updateData: any = {};
+    const updateData: Prisma.UserUpdateInput = {};
 
     if (data.name) updateData.name = data.name;
     if (data.email) updateData.email = data.email;
@@ -194,16 +185,12 @@ export class UsersService {
         createdAt: true,
         updatedAt: true,
       },
-    }).then(user => ({
-        ...user,
-        lineUserId: user.lineOALink?.lineUserId || user.lineId,
-        displayName: user.lineOALink?.displayName,
-        pictureUrl: user.lineOALink?.pictureUrl,
-    }));
+    }).then(user => this.mapUserLineInfo(user));
   }
 
+  // ลบผู้ใช้ออกจากระบบ 
   async deleteUser(id: number) {
-    // Check if user exists first
+    // ตรวจสอบว่าผู้ใช้มีอยู่จริงหรือไม่ 
     const userExists = await this.prisma.user.findUnique({
       where: { id },
       select: { id: true },
@@ -223,6 +210,7 @@ export class UsersService {
     });
   }
 
+  // ค้นหาผู้ใช้จากชื่อ, อีเมล, หรือข้อมูล LINE 
   async searchUsers(query: string) {
     return this.prisma.user.findMany({
       where: {
@@ -260,14 +248,10 @@ export class UsersService {
         updatedAt: true,
       },
       take: 10,
-    }).then(users => users.map(user => ({
-        ...user,
-        lineUserId: user.lineOALink?.lineUserId || user.lineId,
-        displayName: user.lineOALink?.displayName,
-        pictureUrl: user.lineOALink?.pictureUrl
-    })));
+    }).then(users => users.map(user => this.mapUserLineInfo(user)));
   }
 
+  // สร้างบัญชีผู้ใช้ใหม่ 
   async createUser(data: any) {
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
@@ -301,8 +285,9 @@ export class UsersService {
     }
   }
 
+  // เปลี่ยนรหัสผ่านผู้ใช้ 
   async changePassword(id: number, newPassword: string) {
-    // Check if user exists first
+    // ตรวจสอบว่าผู้ใช้มีอยู่จริงหรือไม่ 
     const userExists = await this.prisma.user.findUnique({
       where: { id },
       select: { id: true },
@@ -332,20 +317,21 @@ export class UsersService {
   }
 
  
+  // ดึงหรือสร้างผู้ใช้ใหม่จากการล็อกอินผ่าน LINE 
   async getOrCreateUserFromLine(lineUserId: string, displayName?: string, pictureUrl?: string) {
     // 0. Explicit handle for Guest
     if (!lineUserId || lineUserId === 'Guest' || lineUserId.toLowerCase() === 'null') {
       return this.getOrCreateGuestUser();
     }
 
-    // 1. Check if LineOALink exists
+    // 1. ตรวจสอบว่า LineOALink มีอยู่จริงหรือไม่ 
     const existingLink = await this.prisma.lineOALink.findFirst({
       where: { lineUserId },
       include: { user: true },
     });
 
     if (existingLink) {
-      // Update profile info if changed
+      // อัปเดตข้อมูลโปรไฟล์หากมีการเปลี่ยนแปลง 
       if (displayName && existingLink.displayName !== displayName || 
           pictureUrl && existingLink.pictureUrl !== pictureUrl) {
         await this.prisma.lineOALink.update({
@@ -359,11 +345,11 @@ export class UsersService {
       return existingLink.user;
     }
 
-    // 2. If new user
+    // 2. ถ้าเป็นผู้ใช้ใหม่
     const timestamp = Date.now();
     const systemEmail = `line-${lineUserId}@repair-system.local`; // System unique email
     
-    // Determine name: Use LINE name if available, otherwise generic
+    // กำหนดชื่อ: ใช้ชื่อ LINE หากมี, มิฉะนั้นใช้ชื่อทั่วไป
     const registerName = displayName || `User ${lineUserId.substring(0, 6)}`;
 
     // Create user and link in one transaction
@@ -388,7 +374,7 @@ export class UsersService {
         id: true,
         name: true,
         email: true,
-        // SECURITY: password hash removed from select
+        // รหัสผ่านถูกลบออกจากการแสดงผล 
         role: true,
         department: true,
         phoneNumber: true,
@@ -402,7 +388,7 @@ export class UsersService {
   }
 
   /**
-   * Get or create a Guest user for anonymous repairs
+   * ดึงหรือสร้างผู้ใช้ชั่วคราวสำหรับการแจ้งซ่อมแบบไม่ระบุตัวตน 
    */
   async getOrCreateGuestUser() {
     const guestEmail = 'guest@repair-system.local';
@@ -425,6 +411,19 @@ export class UsersService {
     }
 
     return guest;
+  }
+
+  /**
+   * Private helper to map user and flatten LINE info
+   */
+  private mapUserLineInfo(user: any) {
+    if (!user) return null;
+    return {
+      ...user,
+      lineUserId: user.lineOALink?.lineUserId || user.lineId,
+      displayName: user.lineOALink?.displayName,
+      pictureUrl: user.lineOALink?.pictureUrl,
+    };
   }
 }
 

@@ -1,3 +1,4 @@
+// ===== อัปโหลดไฟล์ Cloudinary | Cloudinary File Upload Service =====
 import { Injectable, Logger } from '@nestjs/common';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 
@@ -14,7 +15,7 @@ export class CloudinaryService {
   }
 
   /**
-   * Upload a file buffer to Cloudinary
+   * อัปโหลดไฟล์ไปยัง Cloudinary 
    * @param buffer - File buffer
    * @param originalname - Original filename
    * @param folder - Cloudinary folder to store the file
@@ -52,8 +53,8 @@ export class CloudinaryService {
   }
 
   /**
-   * Delete a file from Cloudinary by public ID
-   * @param publicId - Cloudinary public ID
+   * ลบไฟล์จาก Cloudinary ตาม public ID 
+   * @param publicId 
    */
   async deleteFile(publicId: string): Promise<void> {
     try {
@@ -65,15 +66,15 @@ export class CloudinaryService {
   }
 
   /**
-   * Extract public ID from Cloudinary URL
-   * @param url - Cloudinary URL
-   * @returns Public ID or null if not found
+   * แยก public ID ออกจาก URL ของ Cloudinary 
+   * @param url 
+   * @returns 
    */
   extractPublicIdFromUrl(url: string): string | null {
     try {
       if (!url) return null;
       
-      // Example URL: https://res.cloudinary.com/cloudname/image/upload/v1234567890/folder/filename.jpg
+      
       const regex = /\/upload\/(?:v\d+\/)?(.+)\.[^.]+$/;
       const match = url.match(regex);
       

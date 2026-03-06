@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, Request, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, Request, BadRequestException, Logger } from '@nestjs/common';
 import { LoansService } from './loans.service';
 
 @Controller('api/loans')
 export class LoansController {
+  private readonly logger = new Logger(LoansController.name);
   constructor(private loansService: LoansService) {}
 
+  // สร้างรายการยืมอุปกรณ์ใหม่ 
   @Post()
   async create(@Body() body: any, @Request() req: any) {
     try {
@@ -29,6 +31,7 @@ export class LoansController {
     }
   }
 
+  // ดึงข้อมูลรายการยืมทั้งหมดสำหรับ Admin 
   @Get('admin/all')
   async findAllForAdmin(@Request() req: any) {
     try {
@@ -49,6 +52,7 @@ export class LoansController {
     }
   }
 
+  // ตรวจสอบและอัพเดตสถานะการยืมที่เกินกำหนด 
   @Get('check/overdue')
   async checkOverdue() {
     try {
@@ -58,10 +62,11 @@ export class LoansController {
     }
   }
 
+  // ดึงข้อมูลรายการยืม (แสดงผลตามสิทธิ์ของผู้ใช้) 
   @Get()
   async findAll(@Request() req: any) {
     try {
-      console.log('GET /api/loans - User:', req.user);
+      this.logger.debug(`GET /api/loans - userId: ${req.user?.sub || req.user?.id}`);
       
       const userId = req.user?.sub || req.user?.id;
       const userRole = req.user?.role;
@@ -74,15 +79,16 @@ export class LoansController {
       const isStaff = userRole === 'ADMIN' || userRole === 'IT';
       const searchId = isStaff ? null : userId;
       
-      console.log(`GET /api/loans - Role: ${userRole}, Fetching for: ${isStaff ? 'ALL' : userId}`);
+      this.logger.debug(`GET /api/loans - Role: ${userRole}, Fetching for: ${isStaff ? 'ALL' : userId}`);
       
       return await this.loansService.findAll(searchId);
     } catch (error: any) {
-      console.error('GET /api/loans - Error:', error);
+      this.logger.error(`GET /api/loans failed: ${error.message}`, error.stack);
       throw new BadRequestException(error.message);
     }
   }
 
+  // ดึงข้อมูลการยืมรายบุคคลตาม ID 
   @Get(':id')
   async findOne(@Param('id') id: string) {
     try {
@@ -92,10 +98,11 @@ export class LoansController {
     }
   }
 
+  // อัปเดตข้อมูลการยืมหรือสถานะการคืน 
   @Put(':id')
   async update(@Param('id') id: string, @Body() body: any) {
     try {
-      console.log(`PUT /api/loans/${id} - Received body:`, body);
+      this.logger.debug(`PUT /api/loans/${id} - status: ${body.status}`);
       
       const result = await this.loansService.update(parseInt(id), {
         status: body.status,
@@ -110,14 +117,15 @@ export class LoansController {
         borrowerLineId: body.borrowerLineId,
       });
       
-      console.log(`PUT /api/loans/${id} - Update successful:`, result);
+      this.logger.debug(`PUT /api/loans/${id} - Update successful`);
       return result;
     } catch (error: any) {
-      console.error(`PUT /api/loans/${id} - Error:`, error);
+      this.logger.error(`PUT /api/loans/${id} failed: ${error.message}`, error.stack);
       throw new BadRequestException(error.message);
     }
   }
 
+  // ลบข้อมูลการยืมออกจากระบบ 
   @Delete(':id')
   async delete(@Param('id') id: string) {
     try {

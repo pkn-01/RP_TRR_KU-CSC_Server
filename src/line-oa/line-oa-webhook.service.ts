@@ -1,3 +1,4 @@
+// ===== รับ Webhook จาก LINE | LINE Webhook Service =====
 import { Injectable, Logger, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';

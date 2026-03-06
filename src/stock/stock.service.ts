@@ -1,11 +1,20 @@
+// ===== จัดการสต็อกอุปกรณ์ | Stock Management Service =====
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
+
+interface StockImportItem {
+  code: string;
+  name: string;
+  category?: string;
+  quantity: number;
+}
 
 @Injectable()
 export class StockService {
   constructor(private prisma: PrismaService) {}
 
+  // ดึงข้อมูลรายการสต็อกทั้งหมด | Get all stock items
   async findAll() {
     return this.prisma.stockItem.findMany({
       orderBy: { updatedAt: 'desc' },
@@ -15,6 +24,7 @@ export class StockService {
     });
   }
 
+  // ดึงข้อมูลสินค้าตาม ID พร้อมรายการธุรกรรมล่าสุด | Get stock item by ID with latest transactions
   async findOne(id: number) {
     const item = await this.prisma.stockItem.findUnique({
       where: { id },
@@ -26,19 +36,21 @@ export class StockService {
       },
     });
     if (!item) {
-      throw new NotFoundException(`ไม่พบสินค้ารหัส #${id}`);
+      throw new NotFoundException(`ไม่พบรหัส #${id}`);
     }
     return item;
   }
 
+  // สร้างรายการสินค้าใหม่ | Create new stock item
   async create(data: Prisma.StockItemCreateInput) {
     return this.prisma.stockItem.create({ data });
   }
 
+  // อัปเดตข้อมูลสินค้า | Update stock item info
   async update(id: number, data: Prisma.StockItemUpdateInput) {
     const item = await this.prisma.stockItem.findUnique({ where: { id } });
     if (!item) {
-      throw new NotFoundException(`ไม่พบสินค้ารหัส #${id}`);
+      throw new NotFoundException(`ไม่พบรหัส #${id}`);
     }
     return this.prisma.stockItem.update({
       where: { id },
@@ -46,11 +58,12 @@ export class StockService {
     });
   }
 
+  // เบิกสินค้าออกจากคลัง | Withdraw items from stock
   async withdraw(id: number, quantity: number, reference?: string, note?: string, userId?: number) {
     return this.prisma.$transaction(async (tx) => {
       const item = await tx.stockItem.findUnique({ where: { id } });
       if (!item) {
-        throw new NotFoundException(`ไม่พบสินค้ารหัส #${id}`);
+        throw new NotFoundException(`ไม่พบรหัส #${id}`);
       }
       if (item.quantity < quantity) {
         throw new BadRequestException(
@@ -80,11 +93,12 @@ export class StockService {
     });
   }
 
+  // เพิ่มจำนวนสินค้าเข้าไปในคลัง | Add quantity to stock
   async addStock(id: number, quantity: number, reference?: string, note?: string, userId?: number) {
     return this.prisma.$transaction(async (tx) => {
       const item = await tx.stockItem.findUnique({ where: { id } });
       if (!item) {
-        throw new NotFoundException(`ไม่พบสินค้ารหัส #${id}`);
+        throw new NotFoundException(`ไม่พบรหัส #${id}`);
       }
 
       const newQty = item.quantity + quantity;
@@ -109,6 +123,7 @@ export class StockService {
     });
   }
 
+  // ค้นหาประวัติธุรกรรมสต็อก | Find stock transactions
   async findTransactions(stockItemId?: number) {
     return this.prisma.stockTransaction.findMany({
       where: stockItemId ? { stockItemId } : {},
@@ -117,16 +132,18 @@ export class StockService {
     });
   }
 
+  // ลบรายการสินค้าออกจากระบบ | Remove stock item
   async remove(id: number) {
     const item = await this.prisma.stockItem.findUnique({ where: { id } });
     if (!item) {
-      throw new NotFoundException(`ไม่พบสินค้ารหัส #${id}`);
+      throw new NotFoundException(`ไม่พบรหัส #${id}`);
     }
     return this.prisma.stockItem.delete({
       where: { id },
     });
   }
 
+  // ล้างค่าหมวดหมู่ของสินค้า | Clear category from stock items
   async deleteCategory(name: string) {
     return this.prisma.stockItem.updateMany({
       where: { category: name },
@@ -134,7 +151,8 @@ export class StockService {
     });
   }
 
-  async bulkImport(items: any[]) {
+  // นำเข้าข้อมูลสินค้าจำนวนมากจากไฟล์ | Bulk import stock items from file
+  async bulkImport(items: StockImportItem[]) {
     let created = 0;
     let updated = 0;
     const errors: { code: string; name: string; error: string }[] = [];

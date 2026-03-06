@@ -20,7 +20,7 @@ export class ExportDataDto {
 export interface DataTypeInfo {
   key: string;
   label: string;
-  icon?: string;
+  
   count: number;
-  description: string;
+ 
 }

@@ -1,3 +1,4 @@
+// ===== แจ้งเตือนผ่าน LINE | LINE Notification Service =====
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LineOAService } from './line-oa.service';

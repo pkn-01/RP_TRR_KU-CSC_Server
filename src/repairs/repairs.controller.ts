@@ -1,3 +1,4 @@
+// ===== API แจ้งซ่อม | Repair Ticket Controller =====
 import {
   Controller,
   Get,
@@ -44,20 +45,21 @@ export class RepairsController {
   ) {}
 
   /* =====================================================
-      LIFF : Create Ticket (Public)
+       LIFF : Create Ticket (Public)
   ===================================================== */
 
   @SetMetadata('isPublic', true)
   @Throttle({ default: { limit: 5, ttl: 60000 } }) // Stricter: 5 requests per minute for public form
   @Post('liff/create')
   @UseInterceptors(FilesInterceptor('files', 3))
+  // สร้างรายการแจ้งซ่อมผ่านหน้า LIFF (Public/Guest) | Create repair ticket via LIFF
   async createFromLiff(
     @Req() req: any,
     @Body() body: Record<string, any>,
     @UploadedFiles() files?: Express.Multer.File[],
   ) {
     try {
-      // Sanitize all string inputs to prevent XSS
+      // กำจัดช่องโหว่ XSS 
       const sanitize = (str: string | undefined): string =>
         str ? str.replace(/<[^>]*>/g, '').trim() : '';
 
@@ -78,7 +80,7 @@ export class RepairsController {
         dto.problemTitle = rawTitle;
       }
 
-      // SECURITY: Verify LINE Access Token to prevent forgery
+      // ตรวจสอบ LINE Access Token เพื่อป้องกันการปลอมแปลง 
       const accessToken = body.accessToken;
       let validatedLineUserId: string | undefined;
 
@@ -105,7 +107,7 @@ export class RepairsController {
 
       dto.reporterLineId = validatedLineUserId || 'Guest';
 
-      // SECURITY: Validate phone format (10 digits starting with 0)
+      // ตรวจสอบรูปแบบเบอร์โทรศัพท์ 
       const phoneRegex = /^0\d{9}$/;
       if (dto.reporterPhone && !phoneRegex.test(dto.reporterPhone)) {
         this.logger.warn(`Invalid phone format rejected: ${dto.reporterPhone}`);
@@ -130,7 +132,7 @@ export class RepairsController {
         body.pictureUrl,
       );
 
-      // Create ticket with validated lineUserId for direct LINE notifications
+      // สร้างรายการแจ้งซ่อมพร้อม LINE notifications 
       return await this.repairsService.create(user.id, dto, files, validatedLineUserId);
     } catch (error: any) {
       this.logger.error(`LIFF Create Error: ${error.message}`, error.stack);
@@ -154,6 +156,7 @@ export class RepairsController {
 
   @SetMetadata('isPublic', true)
   @Get('liff/ticket/:code')
+  // ดึงข้อมูลรายการแจ้งซ่อมสำหรับแสดงผลในหน้า LIFF 
   async getTicketForLiff(
     @Param('code') code: string,
     @Query('lineUserId') lineUserId: string,
@@ -190,6 +193,7 @@ export class RepairsController {
 
   @SetMetadata('isPublic', true)
   @Get('liff/my-tickets')
+  // ดึงรายการแจ้งซ่อมทั้งหมดของผู้ใช้รายนั้นๆ สำหรับ LIFF 
   async getLiffUserTickets(@Query('lineUserId') lineUserId: string) {
     if (!lineUserId) {
       throw new HttpException(
@@ -210,6 +214,7 @@ export class RepairsController {
 
   @SetMetadata('isPublic', true)
   @Get('liff/ticket-public/:code')
+  // ดึงข้อมูลใบแจ้งซ่อมแบบสาธารณะ (ไม่ต้องใช้ Login) 
   async getTicketPublic(@Param('code') code: string) {
     try {
       const ticket = await this.repairsService.findByCode(code);
@@ -232,6 +237,7 @@ export class RepairsController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
+  // ดึงข้อมูลรายการแจ้งซ่อมทั้งหมด (พร้อม Filter) 
   async findAll(
     @Req() req,
     @Query('status') status?: RepairTicketStatus,
@@ -254,6 +260,7 @@ export class RepairsController {
   @Post()
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FilesInterceptor('files', 3))
+  // สร้างรายการแจ้งซ่อมใหม่ (Authenticated) 
   async create(
     @Req() req: any,
     @Body() dto: CreateRepairTicketDto,
@@ -264,18 +271,21 @@ export class RepairsController {
 
   @Get('schedule')
   @UseGuards(JwtAuthGuard)
+  // ดึงข้อมูลตารางเวลาการซ่อม 
   async getSchedule() {
     return this.repairsService.getSchedule();
   }
 
   @Get('statistics/overview')
   @UseGuards(JwtAuthGuard)
+  // ดึงข้อมูลสถิติภาพรวม 
   async getStatistics() {
     return this.repairsService.getStatistics();
   }
 
   @Get('statistics/dashboard')
   @UseGuards(JwtAuthGuard)
+  // ดึงข้อมูลสถิติสำหรับหน้า Dashboard 
   async getDashboardStatistics(
     @Query('filter') filter: 'day' | 'week' | 'month' = 'day',
     @Query('date') dateStr?: string,
@@ -288,6 +298,7 @@ export class RepairsController {
 
   @Get('statistics/by-department')
   @UseGuards(JwtAuthGuard)
+  // ดึงสถิติการแจ้งซ่อมแยกตามแผนก 
   async getDepartmentStatistics(
     @Query('filter') filter?: 'day' | 'week' | 'month',
     @Query('date') dateStr?: string,
@@ -298,18 +309,21 @@ export class RepairsController {
 
   @Get('user/my-tickets')
   @UseGuards(JwtAuthGuard)
+  // ดึงรายการแจ้งซ่อมของผู้ใช้งานปัจจุบัน 
   async getUserTickets(@Req() req: any) {
     return this.repairsService.getUserTickets(req.user.id);
   }
 
   @Get('code/:code')
   @UseGuards(JwtAuthGuard)
+  // ค้นหาใบแจ้งซ่อมด้วย Ticket Code 
   async findByCode(@Param('code') code: string) {
     return this.repairsService.findByCode(code);
   }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
+  // ดึงข้อมูลใบแจ้งซ่อมตาม ID 
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return this.repairsService.findOne(id);
   }
@@ -317,6 +331,7 @@ export class RepairsController {
   @Put(':id')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FilesInterceptor('files', 5))
+  // อัปเดตข้อมูลใบแจ้งซ่อม 
   async update(
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateRepairTicketDto,
@@ -340,6 +355,7 @@ export class RepairsController {
 
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
+  // ลบใบแจ้งซ่อมออกจากระบบ (Hard Delete) 
   async remove(
     @Param('id', ParseIntPipe) id: number,
     @Req() req: any,

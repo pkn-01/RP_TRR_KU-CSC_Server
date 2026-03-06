@@ -1,10 +1,14 @@
-import { Injectable } from '@nestjs/common';
+// ===== ระบบยืม-คืนอุปกรณ์ | Loan Management Service =====
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma, LoanStatus } from '@prisma/client';
 
 @Injectable()
 export class LoansService {
+  private readonly logger = new Logger(LoansService.name);
   constructor(private prisma: PrismaService) {}
 
+  // สร้างรายการยืมอุปกรณ์ใหม่ | Create new loan record
   async create(data: {
     itemName?: string;
     description?: string;
@@ -38,6 +42,7 @@ export class LoansService {
     });
   }
 
+  // ดึงข้อมูลรายการยืมทั้งหมด (รองรับการกรองตามรายชื่อผู้ใช้) | Get all loan records with optional user filter
   async findAll(userId?: number | null) {
     const where = userId ? { userId } : {};
     return await this.prisma.loan.findMany({
@@ -51,6 +56,7 @@ export class LoansService {
     });
   }
 
+  // ดึงข้อมูลการยืมตาม ID | Find loan record by ID
   async findOne(id: number) {
     return await this.prisma.loan.findUnique({
       where: { id },
@@ -62,6 +68,7 @@ export class LoansService {
     });
   }
 
+  // อัปเดตข้อมูลการยืม/คืน | Update loan information or return status
   async update(
     id: number,
     data: {
@@ -77,11 +84,8 @@ export class LoansService {
       borrowerLineId?: string;
     },
   ) {
-    console.log(`[LoansService.update] Starting update for loan ${id}`);
-    console.log(`[LoansService.update] Input data:`, data);
-    
-    const updateData: any = {};
-    if (data.status !== undefined) updateData.status = data.status;
+    const updateData: Prisma.LoanUpdateInput = {};
+    if (data.status !== undefined) updateData.status = data.status as LoanStatus;
     if (data.returnDate !== undefined) updateData.returnDate = data.returnDate ? new Date(data.returnDate) : null;
     if (data.itemName !== undefined) updateData.itemName = data.itemName;
     if (data.description !== undefined) updateData.description = data.description;
@@ -91,8 +95,6 @@ export class LoansService {
     if (data.borrowerDepartment !== undefined) updateData.borrowerDepartment = data.borrowerDepartment;
     if (data.borrowerPhone !== undefined) updateData.borrowerPhone = data.borrowerPhone;
     if (data.borrowerLineId !== undefined) updateData.borrowerLineId = data.borrowerLineId;
-
-    console.log(`[LoansService.update] Prepared updateData:`, JSON.stringify(updateData, null, 2));
 
     try {
       const result = await this.prisma.loan.update({
@@ -105,46 +107,47 @@ export class LoansService {
         },
       });
 
-      console.log(`[LoansService.update] Loan ${id} updated successfully:`, JSON.stringify(result, null, 2));
       return result;
     } catch (error: unknown) {
-      console.error(`[LoansService.update] Error updating loan ${id}:`, error);
+      this.logger.error(`Error updating loan ${id}`, error instanceof Error ? error.stack : undefined);
       throw error;
     }
   }
 
+  // ตรวจสอบข้อมูลการยืมที่เกินกำหนดคืน | Check and update overdue loans
   async checkOverdue() {
     const now = new Date();
-    const overdueLoans = await this.prisma.loan.findMany({
+    
+    // Performance: Use updateMany for batch update instead of individual updates
+    await this.prisma.loan.updateMany({
       where: {
         status: 'BORROWED',
         expectedReturnDate: {
           lt: now,
         },
       },
+      data: { status: 'OVERDUE' },
     });
 
-    // Update status to OVERDUE
-    for (const loan of overdueLoans) {
-      await this.prisma.loan.update({
-        where: { id: loan.id },
-        data: { status: 'OVERDUE' },
-      });
-    }
-
-    return overdueLoans;
+    return await this.prisma.loan.findMany({
+      where: {
+        status: 'OVERDUE',
+        expectedReturnDate: {
+          lt: now,
+        },
+      },
+    });
   }
 
+  // ลบข้อมูลการยืมออกจากระบบ | Delete loan record
   async delete(id: number) {
-    console.log(`[LoansService.delete] Deleting loan ${id}`);
     try {
       const result = await this.prisma.loan.delete({
         where: { id },
       });
-      console.log(`[LoansService.delete] Loan ${id} deleted successfully`);
       return result;
     } catch (error: unknown) {
-      console.error(`[LoansService.delete] Error deleting loan ${id}:`, error);
+      this.logger.error(`Error deleting loan ${id}`, error instanceof Error ? error.stack : undefined);
       throw error;
     }
   }

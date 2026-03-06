@@ -1,3 +1,4 @@
+// ===== จุดเริ่มต้นเซิร์ฟเวอร์ | Server Bootstrap =====
 import 'dotenv/config';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { NestFactory, HttpAdapterHost } from '@nestjs/core';
@@ -66,13 +67,15 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      
+      forbidNonWhitelisted: true,
     }),
   );
 
   const port = process.env.PORT ? Number(process.env.PORT) : 3000;
   await app.listen(port);
-  console.log(`เซิฟเวอร์ทำงานที่: ${await app.getUrl()}`);
+  const logger = new Logger('Bootstrap');
+  const url = await app.getUrl();
+  logger.log(`เซิฟเวอร์ทำงานที่: ${url}`);
 }
 
 bootstrap();

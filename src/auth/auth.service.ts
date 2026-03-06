@@ -1,3 +1,4 @@
+// ===== ระบบยืนยันตัวตน | Authentication Service =====
 import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
@@ -17,6 +18,7 @@ export class AuthService {
     private cloudinary: CloudinaryService,
   ) {}
 
+  // ลงทะเบียนผู้ใช้ใหม่ (Role พื้นฐานคือ USER) | Register new user as standard ROLE
   async register(dto: RegisterDto) {
     const hash = await bcrypt.hash(dto.password, 10);
 
@@ -47,6 +49,7 @@ export class AuthService {
     }
   }
 
+  // ตรวจสอบการเข้าสู่ระบบและสร้าง JWT Token | Authenticate user and generate JWT
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -87,9 +90,10 @@ export class AuthService {
    * Handle LINE OAuth callback
    * Exchanges authorization code for access token and creates/updates user
    */
+  // จัดการ Callback จาก LINE และทำการ Login/Register อัตโนมัติ | Handle LINE OAuth callback and authenticate
   async lineCallback(code: string, state?: string) {
     if (!code) {
-      console.error('[LINE Auth] No authorization code provided');
+      this.logger.error('[LINE Auth] No authorization code provided');
       throw new BadRequestException('Authorization code is required');
     }
     
@@ -165,6 +169,7 @@ export class AuthService {
   }
 
 
+  // ดึงโปรไฟล์ข้อมูลเบื้องต้นของผู้ใช้ | Get basic user profile
   async getProfile(userId: number) {
     try {
       if (!userId || typeof userId !== 'number') {
@@ -197,6 +202,7 @@ export class AuthService {
     }
   }
 
+  // อัปเดตข้อมูลส่วนตัวผู้ใช้ | Update personal profile information
   async updateProfile(userId: number, data: { name?: string; department?: string; phoneNumber?: string; lineId?: string }) {
     const user = await this.prisma.user.update({
       where: { id: userId },
@@ -222,6 +228,7 @@ export class AuthService {
     return user;
   }
 
+  // อัปโหลดและเปลี่ยนแปลงรูปโปรไฟล์ | Upload and change profile picture
   async uploadProfilePicture(userId: number, file: Express.Multer.File) {
     // Get current user to check for existing profile picture
     const currentUser = await this.prisma.user.findUnique({
@@ -234,7 +241,7 @@ export class AuthService {
       try {
         await this.cloudinary.deleteFile(currentUser.profilePictureId);
       } catch (error) {
-        console.error('Error deleting old profile picture:', error);
+        this.logger.error('Error deleting old profile picture');
       }
     }
 
@@ -272,6 +279,7 @@ export class AuthService {
    * Get LINE User ID from Authorization Code
    * Used for Account Linking process
    */
+  // ดึง LINE User ID จาก Authorization Code สำหรับการเชื่อมต่อบัญชี | Get LINE ID from code for account linking
   async getLineUserIdFromCode(code: string): Promise<string> {
     const tokenResponse = await this.lineOAuth.exchangeCodeForToken(code);
     
