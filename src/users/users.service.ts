@@ -38,8 +38,8 @@ export class UsersService {
           updatedAt: true,
           _count: {
             select: {
-              tickets: true,
-              assigned: true,
+              repairTickets: true,
+              repairAssignments: true,
             },
           },
         },
@@ -130,8 +130,8 @@ export class UsersService {
         updatedAt: true,
         _count: {
           select: {
-            tickets: true,
-            assigned: true,
+            repairTickets: true,
+            repairAssignments: true,
           },
         },
       },

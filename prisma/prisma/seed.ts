@@ -1,4 +1,4 @@
-import { PrismaClient, Role, Priority, TicketStatus, ProblemCategory, ProblemSubcategory } from '@prisma/client';
+import { PrismaClient, Role, RepairTicketStatus, UrgencyLevel } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -45,7 +45,7 @@ async function main() {
     }
   }
 
-  // Create test tickets for repair system
+  // Create test repair tickets
   const adminUser = await prisma.user.findUnique({
     where: { email: 'admin@company.com' },
   });
@@ -55,34 +55,29 @@ async function main() {
   });
 
   if (adminUser && itUser) {
-    const ticketExists = await prisma.ticket.findFirst({
+    const repairExists = await prisma.repairTicket.findFirst({
       where: { userId: adminUser.id },
     });
 
-    if (!ticketExists) {
-      await prisma.ticket.create({
+    if (!repairExists) {
+      await prisma.repairTicket.create({
         data: {
-          ticketCode: `TKT-2025-${Date.now().toString().slice(-6)}`,
-          title: 'เครื่องพิมพ์ไม่ทำงาน',
-          description: 'เครื่องพิมพ์ HP LaserJet ในห้องธุรการไม่สามารถพิมพ์เอกสารได้',
-          equipmentName: 'HP LaserJet Pro M404n',
-          equipmentId: 'FS-CNT-6407001',
+          ticketCode: `RP-2025-${Date.now().toString().slice(-6)}`,
+          problemTitle: 'เครื่องพิมพ์ไม่ทำงาน (Repair)',
+          problemDescription: 'เครื่องพิมพ์ HP LaserJet ในห้องธุรการไม่สามารถพิมพ์เอกสารได้ (Seed Data)',
           location: 'ห้องธุรการ ชั้น 3',
-          category: 'REPAIR',
-          problemCategory: ProblemCategory.PERIPHERAL,
-          problemSubcategory: ProblemSubcategory.OTHER,
-          priority: Priority.HIGH,
-          status: TicketStatus.OPEN,
-          notes: 'ตรวจเชคหมึก ปลั๊ก และการเชื่อมต่อ',
-          requiredDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          problemCategory: 'PERIPHERAL',
+          urgency: UrgencyLevel.URGENT,
+          status: RepairTicketStatus.PENDING,
+          reporterName: adminUser.name,
+          reporterPhone: '0812345678',
           userId: adminUser.id,
-          assignedTo: itUser.id,
         },
       });
 
       console.log('✅ Created test repair ticket');
     } else {
-      console.log('⚠️ Test ticket already exists');
+      console.log('⚠️ Test repair ticket already exists');
     }
   }
 }
