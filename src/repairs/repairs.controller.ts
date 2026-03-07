@@ -18,6 +18,7 @@ import {
   ParseIntPipe,
   UseGuards,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { FilesInterceptor } from '@nestjs/platform-express';
@@ -369,5 +370,28 @@ export class RepairsController {
       throw new ForbiddenException('Permission denied: Only ADMIN or IT can delete repair tickets');
     }
     return this.repairsService.remove(id);
+  }
+
+  // ลบใบแจ้งซ่อมแบบกลุ่มตามช่วงเวลา (Bulk Delete)
+  @Delete('bulk-delete/by-date')
+  @UseGuards(JwtAuthGuard)
+  @SetMetadata('roles', [Role.ADMIN])
+  async bulkDeleteByDate(
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+    @Req() req: any,
+  ) {
+    if (!startDate || !endDate) {
+      throw new BadRequestException('Both startDate and endDate are required for bulk deletion');
+    }
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      throw new BadRequestException('Invalid date format');
+    }
+
+    return this.repairsService.removeByDateRange(start, end);
   }
 }

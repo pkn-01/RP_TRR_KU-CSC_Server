@@ -741,6 +741,41 @@ export class RepairsService {
     return { message: 'Deleted successfully', ticketCode: ticket.ticketCode };
   }
 
+  // ลบใบแจ้งซ่อมตามช่วงเวลา (Bulk Delete) | Remove repair tickets by date range
+  async removeByDateRange(startDate: Date, endDate: Date) {
+    // Find tickets in range to log or perform additional cleanup if needed
+    const count = await this.prisma.repairTicket.count({
+      where: {
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+    });
+
+    if (count === 0) {
+      return { message: 'No records found in this range', count: 0 };
+    }
+
+    // Related records will be deleted via Cascade as defined in schema.prisma
+    const result = await this.prisma.repairTicket.deleteMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+    });
+
+    this.logger.log(`Bulk deleted ${result.count} repair tickets from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
+    return { 
+      message: 'Bulk deletion successful', 
+      count: result.count,
+      period: { startDate, endDate }
+    };
+  }
+
   // ดึงข้อมูลสถิติภาพรวมแยกตามสถานะ | Get summary statistics by status
   async getStatistics() {
     const stats = await this.prisma.repairTicket.groupBy({
