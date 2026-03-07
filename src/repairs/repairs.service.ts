@@ -961,6 +961,8 @@ export class RepairsService {
     urgency?: UrgencyLevel;
     assignedTo?: number;
     limit?: number;
+    startDate?: Date;
+    endDate?: Date;
   }) {
     const {
       userId,
@@ -981,6 +983,12 @@ export class RepairsService {
     if (status) where.status = status;
     if (urgency) where.urgency = urgency;
     if (assignedTo) where.assignedTo = assignedTo;
+
+    if (params.startDate || params.endDate) {
+      where.createdAt = {};
+      if (params.startDate) where.createdAt.gte = params.startDate;
+      if (params.endDate) where.createdAt.lte = params.endDate;
+    }
 
     return this.prisma.repairTicket.findMany({
       where,

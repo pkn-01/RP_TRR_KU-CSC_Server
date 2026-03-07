@@ -244,6 +244,8 @@ export class RepairsController {
     @Query('urgency') urgency?: UrgencyLevel,
     @Query('assignedTo') assignedTo?: string,
     @Query('limit') limit?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
   ) {
     const user = req.user;
 
@@ -254,6 +256,8 @@ export class RepairsController {
       urgency,
       assignedTo: assignedTo ? Number(assignedTo) : undefined,
       limit: limit ? Number(limit) : undefined,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
     });
   }
 
