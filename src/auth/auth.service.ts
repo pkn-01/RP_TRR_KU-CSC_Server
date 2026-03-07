@@ -177,9 +177,7 @@ export class AuthService {
           name: true,
           email: true,
           role: true,
-          department: true,
           phoneNumber: true,
-          lineId: true,
           profilePicture: true,
           createdAt: true,
         },
@@ -197,23 +195,19 @@ export class AuthService {
   }
 
   // อัปเดตข้อมูลส่วนตัวผู้ใช้ 
-  async updateProfile(userId: number, data: { name?: string; department?: string; phoneNumber?: string; lineId?: string }) {
+  async updateProfile(userId: number, data: { name?: string; phoneNumber?: string; }) {
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: {
         ...(data.name && { name: data.name }),
-        ...(data.department && { department: data.department }),
         ...(data.phoneNumber && { phoneNumber: data.phoneNumber }),
-        ...(data.lineId && { lineId: data.lineId }),
       },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
-        department: true,
         phoneNumber: true,
-        lineId: true,
         profilePicture: true,
         createdAt: true,
       },
@@ -258,9 +252,7 @@ export class AuthService {
         name: true,
         email: true,
         role: true,
-        department: true,
         phoneNumber: true,
-        lineId: true,
         profilePicture: true,
         createdAt: true,
       },
