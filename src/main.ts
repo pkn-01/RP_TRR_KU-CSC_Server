@@ -1,4 +1,4 @@
-// ===== จุดเริ่มต้นเซิร์ฟเวอร์ | Server Bootstrap =====
+// ===== เซิร์ฟเวอร์ =====
 import 'dotenv/config';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { NestFactory, HttpAdapterHost } from '@nestjs/core';

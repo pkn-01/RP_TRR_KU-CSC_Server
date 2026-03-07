@@ -48,7 +48,7 @@ describe('AuthService - LINE OAuth Integration', () => {
     // Set up default env variables
     process.env.LINE_CHANNEL_ID = '2008551953';
     process.env.LINE_CHANNEL_SECRET = 'test-secret';
-    process.env.LINE_REDIRECT_URI = 'https://rp-trr-client-internship.vercel.app/callback';
+    process.env.LINE_REDIRECT_URI = 'https://localhost:3000/callback';
     process.env.JWT_SECRET = 'test-jwt-secret';
   });
 
