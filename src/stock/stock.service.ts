@@ -155,25 +155,29 @@ export class StockService {
   async bulkImport(items: StockImportItem[]) {
     let created = 0;
     let updated = 0;
-    const errors: { code: string; name: string; error: string }[] = [];
+    const errors: { code: string; name: string; error: string; category: string }[] = [];
 
     for (const item of items) {
       try {
-        if (!item.code || !item.name) {
-          errors.push({ code: item.code || '(ว่าง)', name: item.name || '(ว่าง)', error: 'ไม่มี code หรือ name' });
+        if (!item.code || !item.name || !item.category) {
+          errors.push({ code: item.code || '(ว่าง)', name: item.name || '(ว่าง)', category: item.category || '(ว่าง)', error: 'ไม่มี code หรือ name หรือ category' });
           continue;
         }
 
         const existing = await this.prisma.stockItem.findUnique({
-          where: { code: item.code },
+          where: {
+            code_name_category: {
+              code: item.code,
+              name: item.name,
+              category: item.category,
+            },
+          },
         });
 
         if (existing) {
           await this.prisma.stockItem.update({
-            where: { code: item.code },
+            where: { id: existing.id },
             data: {
-              name: item.name,
-              category: item.category || null,
               quantity: item.quantity,
             },
           });
@@ -183,7 +187,7 @@ export class StockService {
             data: {
               code: item.code,
               name: item.name,
-              category: item.category || null,
+              category: item.category,
               quantity: item.quantity,
             },
           });
@@ -192,7 +196,7 @@ export class StockService {
       } catch (error) {
         const errMsg = error instanceof Error ? error.message : String(error);
         console.error(`Error importing item ${item.code}:`, error);
-        errors.push({ code: item.code || '(ว่าง)', name: item.name || '(ว่าง)', error: errMsg });
+        errors.push({ code: item.code || '(ว่าง)', name: item.name || '(ว่าง)', category: item.category || '(ว่าง)', error: errMsg });
       }
     }
 
