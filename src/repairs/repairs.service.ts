@@ -775,6 +775,27 @@ export class RepairsService {
     };
   }
 
+  // ลบใบแจ้งซ่อมแบบกลุ่มตามรายการ ID | Remove multiple repair tickets by their IDs
+  async removeMany(ids: number[]) {
+    if (!ids || ids.length === 0) {
+      return { message: 'No IDs provided', count: 0 };
+    }
+
+    const result = await this.prisma.repairTicket.deleteMany({
+      where: {
+        id: { in: ids },
+      },
+    });
+
+    this.logger.log(`Bulk deleted ${result.count} repair tickets by IDs`);
+
+    return {
+      message: 'Bulk deletion successful',
+      count: result.count,
+      ids,
+    };
+  }
+
   // ดึงข้อมูลสถิติภาพรวมแยกตามสถานะ | Get summary statistics by status
   async getStatistics() {
     const stats = await this.prisma.repairTicket.groupBy({

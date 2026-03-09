@@ -387,4 +387,23 @@ export class RepairsController {
 
     return this.repairsService.removeByDateRange(start, end);
   }
+
+  // ลบใบแจ้งซ่อมแบบกลุ่มตามรายการ ID (Bulk Delete by IDs)
+  @Delete('bulk-delete/by-ids')
+  @UseGuards(JwtAuthGuard)
+  async bulkDeleteByIDs(
+    @Body('ids') ids: number[],
+    @Req() req: any,
+  ) {
+    // SECURITY: Only ADMIN and IT can bulk delete tickets
+    if (req.user.role !== Role.ADMIN && req.user.role !== Role.IT) {
+      throw new ForbiddenException('Permission denied: Only ADMIN or IT can delete repair tickets');
+    }
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      throw new BadRequestException('An array of IDs is required for bulk deletion');
+    }
+
+    return this.repairsService.removeMany(ids.map(id => Number(id)));
+  }
 }
