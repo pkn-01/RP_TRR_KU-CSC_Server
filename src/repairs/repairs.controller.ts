@@ -28,7 +28,6 @@ import { UpdateRepairTicketDto } from './dto/update-repair-ticket.dto';
 import {
   RepairTicketStatus,
   UrgencyLevel,
-  UrgencyLevel,
   Role
 } from '@prisma/client';
 import { LineOANotificationService } from '../line-oa/line-oa-notification.service';
