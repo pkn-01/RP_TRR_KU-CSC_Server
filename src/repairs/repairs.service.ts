@@ -291,6 +291,13 @@ export class RepairsService {
       },
     });
 
+    // Fetch staff name who updated the ticket
+    const updatedBy = updatedById ? await this.prisma.user.findUnique({
+      where: { id: updatedById },
+      select: { name: true }
+    }) : null;
+    const staffName = updatedBy?.name;
+
     // Validate status transition
     if (dto.status !== undefined && originalTicket && dto.status !== originalTicket.status) {
       if (!this.validateStatusTransition(originalTicket.status, dto.status)) {
@@ -645,6 +652,7 @@ export class RepairsService {
                 imageUrl: cachedImageUrl,
                 createdAt: ticket.createdAt,
                 remark: remarkMessage,
+                staffName,
               }
             );
             this.logger.log(`Notified reporter directly for: ${ticket.ticketCode}`);
@@ -654,6 +662,7 @@ export class RepairsService {
               problemTitle: ticket.problemTitle,
               status: dto.status,
               remark: remarkMessage,
+              staffName,
               technicianNames,
               updatedAt: new Date(),
             });
@@ -676,6 +685,7 @@ export class RepairsService {
                 imageUrl: cachedImageUrl,
                 createdAt: ticket.createdAt,
                 remark: dto.messageToReporter,
+                staffName,
               }
             );
           } else {
@@ -685,6 +695,7 @@ export class RepairsService {
               problemTitle: ticket.problemTitle,
               status: ticket.status,
               remark: dto.messageToReporter,
+              staffName,
               technicianNames,
               updatedAt: new Date(),
             });

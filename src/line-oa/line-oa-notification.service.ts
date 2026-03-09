@@ -64,6 +64,7 @@ export interface RepairStatusUpdatePayload {
   problemDescription?: string;
   status: string;
   remark?: string;
+  staffName?: string;
   technicianNames?: string[]; // Changed to array for multi-assignee
   nextStep?: string;
   updatedAt?: Date;
@@ -529,6 +530,7 @@ export class LineOANotificationService {
       imageUrl?: string;
       createdAt: Date;
       remark?: string;
+      staffName?: string;
     }
   ) {
     try {
@@ -565,6 +567,7 @@ export class LineOANotificationService {
     imageUrl?: string;
     createdAt: Date;
     remark?: string;
+    staffName?: string;
   }) {
     const statusConfig = this.getStatusConfig(payload.status);
     const urgencyConfig = this.getUrgencyConfig(payload.urgency);
@@ -667,7 +670,14 @@ export class LineOANotificationService {
             borderColor: '#FED7AA',
             borderWidth: '1px',
             contents: [
-              { type: 'text', text: 'แจ้งจากเจ้าหน้าที่', size: 'xs', color: '#9A3412', weight: 'bold' },
+              { 
+                type: 'text', 
+                text: payload.staffName ? `แจ้งจากเจ้าหน้าที่: ${payload.staffName}` : 'แจ้งจากเจ้าหน้าที่', 
+                size: 'xs', 
+                color: '#9A3412', 
+                weight: 'bold',
+                wrap: true
+              },
               { type: 'text', text: payload.remark, size: 'sm', color: '#7C2D12', wrap: true, margin: 'xs' },
             ],
           }] : []),
@@ -1474,10 +1484,11 @@ export class LineOANotificationService {
                   contents: [
                     {
                       type: 'text',
-                      text: 'หมายเหตุเพิ่มเติม',
+                      text: payload.staffName ? `แจ้งจากเจ้าหน้าที่: ${payload.staffName}` : 'หมายเหตุเพิ่มเติม',
                       color: '#9A3412',
                       size: 'xs',
                       weight: 'bold',
+                      wrap: true
                     },
                     {
                       type: 'text',
