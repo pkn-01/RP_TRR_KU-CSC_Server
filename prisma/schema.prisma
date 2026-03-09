@@ -106,7 +106,6 @@ model RepairTicket {
   reporterDepartment      String?
   reporterPhone           String?
   reporterLineId          String?
-  problemCategory         ProblemCategory
   problemTitle            String
   problemDescription      String?
   location                String
@@ -260,16 +259,6 @@ enum UrgencyLevel {
   NORMAL
   URGENT
   CRITICAL
-}
-
-enum ProblemCategory {
-  HARDWARE
-  SOFTWARE
-  NETWORK
-  PERIPHERAL
-  EMAIL_OFFICE365
-  ACCOUNT_PASSWORD
-  OTHER
 }
 
 enum LoanStatus {

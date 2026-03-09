@@ -66,7 +66,6 @@ async function main() {
           problemTitle: 'เครื่องพิมพ์ไม่ทำงาน (Repair)',
           problemDescription: 'เครื่องพิมพ์ HP LaserJet ในห้องธุรการไม่สามารถพิมพ์เอกสารได้ (Seed Data)',
           location: 'ห้องธุรการ ชั้น 3',
-          problemCategory: 'PERIPHERAL',
           urgency: UrgencyLevel.URGENT,
           status: RepairTicketStatus.PENDING,
           reporterName: adminUser.name,

@@ -28,7 +28,7 @@ import { UpdateRepairTicketDto } from './dto/update-repair-ticket.dto';
 import {
   RepairTicketStatus,
   UrgencyLevel,
-  ProblemCategory,
+  UrgencyLevel,
   Role
 } from '@prisma/client';
 import { LineOANotificationService } from '../line-oa/line-oa-notification.service';
@@ -114,12 +114,6 @@ export class RepairsController {
         this.logger.warn(`Invalid phone format rejected: ${dto.reporterPhone}`);
         dto.reporterPhone = '';
       }
-
-      dto.problemCategory = Object.values(ProblemCategory).includes(
-        body.problemCategory,
-      )
-        ? body.problemCategory
-        : ProblemCategory.OTHER;
 
       dto.urgency = Object.values(UrgencyLevel).includes(body.urgency)
         ? body.urgency

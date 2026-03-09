@@ -152,7 +152,6 @@ export class DataManagementService {
     sheet.columns = [
       { header: 'รหัส', key: 'ticketCode', width: 15 },
       { header: 'ชื่อปัญหา', key: 'problemTitle', width: 30 },
-      { header: 'หมวดหมู่', key: 'problemCategory', width: 15 },
       { header: 'สถานที่', key: 'location', width: 20 },
       { header: 'ผู้แจ้ง', key: 'reporterName', width: 20 },
       { header: 'โทรศัพท์', key: 'reporterPhone', width: 15 },
@@ -168,7 +167,6 @@ export class DataManagementService {
       sheet.addRow({
         ticketCode: repair.ticketCode,
         problemTitle: repair.problemTitle,
-        problemCategory: repair.problemCategory,
         location: repair.location,
         reporterName: repair.reporterName,
         reporterPhone: repair.reporterPhone || '-',

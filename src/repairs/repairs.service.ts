@@ -170,7 +170,6 @@ export class RepairsService {
         reporterDepartment: dto.reporterDepartment || null,
         reporterPhone: dto.reporterPhone || null,
         reporterLineId: dto.reporterLineId || null,
-        problemCategory: dto.problemCategory,
         problemTitle: dto.problemTitle,
         problemDescription: dto.problemDescription || null,
         location: dto.location,

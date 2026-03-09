@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsNumber, IsEnum, IsNotEmpty, MaxLength, Matches } from 'class-validator';
-import { ProblemCategory, UrgencyLevel } from '@prisma/client';
+import { UrgencyLevel } from '@prisma/client';
 
 export class CreateRepairTicketDto {
   @IsString()
@@ -24,9 +24,6 @@ export class CreateRepairTicketDto {
   @IsOptional()
   @IsString()
   accessToken?: string;
-
-  @IsEnum(ProblemCategory)
-  problemCategory: ProblemCategory;
 
   @IsString()
   @IsNotEmpty({ message: 'กรุณาระบุหัวข้อปัญหา' })
